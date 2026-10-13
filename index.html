@@ -127,6 +127,11 @@
 (function(){
   const form=document.getElementById('authForm'),status=document.getElementById('loginStatus');
   if(!form||!status)return;
+  const button=document.getElementById('submitBtn');
+  if(button)button.addEventListener('click',function(){
+    status.textContent='Botón detectado. Comprobando el formulario de acceso…';
+    status.className='status show';
+  },true);
   form.addEventListener('submit',function(){
     status.textContent='Procesando el acceso… Si este mensaje no cambia en unos segundos, la autenticación no terminó de inicializarse.';
     status.className='status show';
