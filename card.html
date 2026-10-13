@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0908">
+<title>Abriendo enlace…</title>
+<style>
+:root{color-scheme:dark}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0908;color:#f4eee6;font:16px system-ui,sans-serif}.box{max-width:440px;margin:24px;padding:28px;border:1px solid #493525;border-radius:18px;background:#17110e;text-align:center}h1{font-size:1.35rem}p{color:#cdbba9;line-height:1.5}a{color:#d8b17a}
+</style>
+</head>
+<body><main class="box"><h1 id="title">Abriendo el enlace…</h1><p id="message">Estamos comprobando la tarjeta.</p><p id="manual" hidden><a id="target" href="#">Continuar al destino</a></p></main>
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SUPABASE_URL='https://qcvhxrudzjlgqlhvnkkl.supabase.co';
+const SUPABASE_KEY='sb_publishable_OpfoWwYD2lvC9dVTT_UT8A_Bvz_GKRw';
+const supabase=createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+function fail(message){$('title').textContent='No se pudo abrir la tarjeta';$('message').textContent=message}
+function detectDeviceType(){const ua=navigator.userAgent||'';if(/iPhone|iPad|iPod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))return 'iPhone/iPad';if(/Android/i.test(ua))return 'Android';if(/Windows NT|Macintosh|Mac OS X|Linux x86_64|CrOS/i.test(ua))return 'PC/Mac';return 'Desconocido'}
+async function run(){
+ const id=new URLSearchParams(location.search).get('id');
+ if(!id||!/^[0-9a-f-]{36}$/i.test(id)){fail('El enlace no contiene un identificador de tarjeta válido.');return}
+ try{
+  const {data:card,error}=await supabase.from('app_business_cards').select('id,business_id,channel,target_url,status,archived_at').eq('id',id).maybeSingle();
+  if(error)throw error;
+  if(!card||card.status!=='active'||card.archived_at){fail('Esta tarjeta está pausada, archivada o no existe. Contactá al restaurante.');return}
+  const {data:business,error:businessError}=await supabase.from('app_businesses').select('name').eq('id',card.business_id).maybeSingle();
+  if(businessError)throw businessError;
+  const eventName=card.channel==='qr'?'qr_scan':'nfc_tap';
+  const {error:logError}=await supabase.from('nfc_events').insert({restaurant:business?.name||'Negocio',event:eventName,device_type:detectDeviceType(),card_id:card.id});
+  if(logError)throw logError;
+  $('title').textContent='Listo';$('message').textContent='Abriendo el destino…';
+  $('target').href=card.target_url;$('manual').hidden=false;
+  location.replace(card.target_url);
+ }catch(e){console.error(e);fail('No pudimos verificar o registrar esta tarjeta. Es posible que falte habilitar el acceso público de lectura para tarjetas activas en Supabase.');}
+}
+run();
+</script>
+</body></html>
