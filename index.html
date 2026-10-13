@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0908">
+  <title>Central NFC + QR | Acceso</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0908;--panel:#15110f;--line:#38291f;--wood:#a8784d;--gold:#d7b47b;--muted:#b6aaa0;--text:#f6f0e9}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#2b1d14 0,#0b0908 58%);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);display:grid;place-items:center;padding:24px}
+    .shell{width:min(100%,960px);display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:rgba(16,13,11,.94);box-shadow:0 25px 80px #0008}
+    .intro{padding:48px 38px;background:linear-gradient(150deg,#241910,#100d0b 75%);border-right:1px solid var(--line)}
+    .mark{width:48px;height:48px;border:1px solid var(--wood);border-radius:14px;display:grid;place-items:center;color:var(--gold);font-weight:800;letter-spacing:.08em}
+    .eyebrow{margin:28px 0 8px;color:var(--gold);font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+    h1{font-size:clamp(30px,4vw,44px);line-height:1.08;margin:0 0 18px;letter-spacing:-.04em}
+    p{color:var(--muted)}.features{padding:0;list-style:none;margin:28px 0 0}.features li{padding:10px 0;border-bottom:1px solid #ffffff12;color:#e8ded4}
+    .auth{padding:42px 34px}.tabs{display:flex;gap:8px;margin-bottom:26px}.tab{flex:1;background:#211a15;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:11px;cursor:pointer}.tab[aria-selected=true]{border-color:var(--gold);color:var(--gold);background:#302218}
+    label{display:block;font-size:13px;color:#e2d5c8;margin:15px 0 7px}input{width:100%;border:1px solid #443328;border-radius:10px;background:#0d0b0a;padding:13px 14px;color:white;font:inherit;outline:none}input:focus{border-color:var(--gold)}
+    .primary{width:100%;margin-top:22px;border:0;border-radius:10px;background:linear-gradient(110deg,#a8784d,#d7b47b);color:#1a1008;font-weight:800;padding:14px;cursor:pointer}
+    .note{font-size:12px;line-height:1.5}.status{margin-top:18px;border:1px solid var(--line);border-radius:10px;padding:12px;color:#e9d5bd;display:none;overflow-wrap:anywhere}.status.error{border-color:#8e5147;color:#ffc4b8}.small{font-size:12px;color:var(--muted);margin-top:18px}
+    @media(max-width:700px){.shell{grid-template-columns:1fr}.intro{padding:28px;border-right:0;border-bottom:1px solid var(--line)}.intro .features{display:none}.eyebrow{margin-top:20px}.auth{padding:28px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="intro">
+      <div class="mark">NQ</div>
+      <div class="eyebrow">Plataforma de gestión</div>
+      <h1>Tu negocio.<br>Todos tus datos.</h1>
+      <p>Una plataforma central para gestionar interacciones NFC y QR y consultar la evolución de las reseñas de cada restaurante.</p>
+      <ul class="features">
+        <li>— Estadísticas NFC y QR separadas</li>
+        <li>— Panel privado por restaurante</li>
+        <li>— Acceso sujeto a aprobación</li>
+      </ul>
+    </section>
+    <section class="auth">
+      <div class="tabs" role="tablist">
+        <button class="tab" id="loginTab" aria-selected="true" type="button">Iniciar sesión</button>
+        <button class="tab" id="signupTab" aria-selected="false" type="button">Solicitar acceso</button>
+      </div>
+      <form id="authForm">
+        <div id="nameWrap" hidden>
+          <label for="fullName">Nombre y apellido</label>
+          <input id="fullName" autocomplete="name" maxlength="100">
+        </div>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required maxlength="254">
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" autocomplete="current-password" required minlength="8">
+        <button class="primary" id="submitBtn" type="submit">Iniciar sesión</button>
+      </form>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <p class="note">Las nuevas cuentas quedan pendientes de aprobación. El panel y los datos de restaurantes no se mostrarán hasta que el administrador apruebe el acceso.</p>
+      <p class="small">Prototipo inicial. Antes de usarlo, configura Supabase y prueba las políticas de acceso.</p>
+    </section>
+  </main>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // Sustituye por Project URL y publishable/anon key. Nunca pongas service_role aquí.
+    const SUPABASE_URL = 'https://qcvhxrudzjlgqlhvnkkl.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_OpfoWwYD2lvC9dVTT_UT8A_Bvz_GKRw';
+    const configured = SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.includes('PEGA_AQUI')
+      && !SUPABASE_ANON_KEY.includes('PEGA_AQUI');
+    const supabase = configured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    let mode = 'login';
+    const loginTab = document.querySelector('#loginTab');
+    const signupTab = document.querySelector('#signupTab');
+    const nameWrap = document.querySelector('#nameWrap');
+    const nameInput = document.querySelector('#fullName');
+    const submitBtn = document.querySelector('#submitBtn');
+    const statusBox = document.querySelector('#status');
+
+    function setMode(next) {
+      mode = next;
+      const signup = mode === 'signup';
+      loginTab.setAttribute('aria-selected', String(!signup));
+      signupTab.setAttribute('aria-selected', String(signup));
+      nameWrap.hidden = !signup;
+      nameInput.required = signup;
+      submitBtn.textContent = signup ? 'Enviar solicitud' : 'Iniciar sesión';
+      statusBox.style.display = 'none';
+    }
+    function show(message, error = false) {
+      statusBox.textContent = message;
+      statusBox.className = 'status' + (error ? ' error' : '');
+      statusBox.style.display = 'block';
+    }
+    loginTab.addEventListener('click', () => setMode('login'));
+    signupTab.addEventListener('click', () => setMode('signup'));
+
+    document.querySelector('#authForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!supabase) {
+        show('Falta configurar la URL y la clave pública de Supabase. Esta pantalla todavía no está conectada.', true);
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Procesando…';
+      try {
+        const email = document.querySelector('#email').value.trim();
+        const password = document.querySelector('#password').value;
+        if (mode === 'signup') {
+          const full_name = nameInput.value.trim();
+          const { error } = await supabase.auth.signUp({
+            email, password,
+            options: { data: { full_name } }
+          });
+          if (error) throw error;
+          show('Solicitud enviada. Si se requiere confirmar el email, revisá tu correo. La cuenta quedará pendiente de aprobación.');
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          const { data: profile, error: profileError } = await supabase
+            .from('app_profiles').select('status, role').eq('user_id', data.user.id).maybeSingle();
+          if (profileError) throw profileError;
+          if (!profile || profile.status !== 'approved') {
+            await supabase.auth.signOut();
+            show('Tu cuenta todavía no está aprobada. El acceso se habilitará cuando el administrador revise la solicitud.');
+          } else {
+            show(profile.role === 'admin'
+              ? 'Acceso validado. El panel de administración se añadirá en la siguiente etapa.'
+              : 'Acceso validado. El panel del restaurante se añadirá en la siguiente etapa.');
+          }
+        }
+      } catch (error) {
+        show(error?.message || 'No se pudo completar la operación. Revisá los datos e intentá de nuevo.', true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = mode === 'signup' ? 'Enviar solicitud' : 'Iniciar sesión';
+      }
+    });
+  </script>
+</body>
+</html>
