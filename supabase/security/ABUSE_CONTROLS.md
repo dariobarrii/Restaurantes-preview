@@ -1,37 +1,29 @@
-# NFC/QR event abuse controls (pre-production design)
+# NFC/QR event abuse controls (staged implementation)
 
-## Goal
+## Implemented on the security branch; not deployed
 
-Stop casual forged traffic and limit replay/spam without changing the live NFC/QR pages or legacy table policies until the replacement path is tested.
+- `supabase/migrations/202610140001_nfc_card_tokens.sql` defines a private per-card token registry and a `SECURITY DEFINER` RPC callable only by `service_role`. The RPC derives restaurant/event from the server-side card record and inserts an event atomically with a short per-card cooldown.
+- `supabase/functions/register-nfc-event/index.ts` validates the request shape, hashes the presented token with SHA-256, and calls the RPC using the server-side service-role credential. It does not accept restaurant or event from the browser.
 
-## Threat model and limits
+## Important limits
 
-- A static NFC/QR URL is public to anyone who scans it. A token embedded in that URL is a bearer credential and can be copied; it must not be described as secret or impossible to replay.
-- CORS only constrains browsers. It does not authenticate a request.
-- A shared restaurant token in JavaScript is extractable and should not be used as the sole protection.
-- No service-role key or other Supabase server secret may appear in HTML, QR content, Git history, or browser requests.
-
-## Recommended minimum design
-
-1. Give each physical card/QR placement a unique, high-entropy random token (at least 128 random bits). Use an opaque card ID as the public identifier.
-2. Store only a cryptographic hash of the token server-side, with fields for card ID, restaurant, allowed event type(s), active/revoked status, and optional expiry. Never store or log the raw token.
-3. The Edge Function validates the card ID + token against the stored hash, then derives the restaurant and allowed event from that server-side record. Do not trust the client-supplied restaurant name.
-4. Apply atomic server-side throttling: per-card cooldown/deduplication, plus a global/IP-based limit where a trustworthy platform-provided client IP is available. Treat forwarded IP headers supplied directly by clients as untrusted. Return a generic 429 on throttling.
-5. Record a server-generated timestamp and minimal metadata. Avoid storing unnecessary personal data.
-6. Keep the existing nfc_events insert policy while the six pages are migrated. Test NFC and QR for Feral, Tzura, and Veta; then migrate dashboard reads and daily-review writes before restricting legacy SELECT/UPDATE permissions.
-7. Revoke a card token by disabling its server-side record. A copied token remains usable until disabled or rotated, so rate limits and monitoring remain necessary.
+- A token embedded in a static NFC/QR URL is a bearer credential: anyone who scans it can copy it. It can be revoked by setting the corresponding server-side card row inactive or rotating the token, but it is not one-time authentication.
+- CORS is not authentication. The current implementation has per-card cooldown only; a global/IP-based rate limiter and monitoring still need design and testing.
+- The two-second cooldown can discard a second event from the same physical card within that interval. Confirm this tradeoff is acceptable for the actual usage pattern before rollout.
+- The function expects `card_id` as a UUID and `token` as a random high-entropy string. The database stores only the lowercase SHA-256 hex digest of the token.
+- Do not put the service-role key or raw token hashes in browser code. Do not log raw tokens.
 
 ## Rollout gates
 
-- [ ] Create and review the card-token table and indexes in a migration file; do not run it in production yet.
-- [ ] Add token verification and atomic rate limiting to the Edge Function.
-- [ ] Provide a safe way to provision/rotate card tokens without putting server secrets in the browser.
-- [ ] Update all three NFC and all three QR pages on a separate branch.
+- [ ] Review the migration and function; test SQL and error mapping in a non-production environment.
+- [ ] Create a safe server-side provisioning/rotation workflow for card UUIDs and random tokens. Do not hand-create production credentials in a browser or commit them to Git.
+- [ ] Update all three NFC and all three QR pages on a separate branch to send `card_id`, `token`, and `device_type`; keep each destination's Google review redirect working.
+- [ ] Confirm the function URL and required Supabase secrets are configured before deploying.
+- [ ] Test valid, invalid, inactive/revoked, malformed, and rapid-repeat requests for all three restaurants.
 - [ ] Migrate dashboard reads and daily review writes to authenticated, membership-checked access.
-- [ ] Test valid token, invalid token, revoked token, replay/cooldown, malformed payload, all six links, Google review redirect, admin account, and Feral-only test account.
 - [ ] Only after sign-off, deploy the function and apply the reviewed database migration.
 - [ ] Remove legacy anonymous permissions only after confirming no active page/dashboard depends on them.
 
-## Important
+## Production status
 
-This document is a design checklist, not an implementation or a claim that production is protected. No live Supabase policy or published page should be changed as part of this planning stage.
+This is a staged implementation on `security/nfc-event-hardening` only. It has not been deployed or tested against the live Supabase project. No live policy or published page should be changed as part of this branch work.
