@@ -46,7 +46,8 @@ begin
     raise exception using errcode = '28000', message = 'invalid_or_revoked_card';
   end if;
 
-  if v_card.last_event_at is not null and v_card.last_event_at > now() - interval '30 seconds' then
+-- Short per-card cooldown limits rapid duplicate posts without suppressing a card for tens of seconds.
+  if v_card.last_event_at is not null and v_card.last_event_at > now() - interval '2 seconds' then
     raise exception using errcode = 'P0001', message = 'event_throttled';
   end if;
 
