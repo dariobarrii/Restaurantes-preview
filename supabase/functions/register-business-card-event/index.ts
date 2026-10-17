@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const body = await readJsonBodyLimited(req, 2048);
+    const body = await readJsonBodyLimited(req, 2048) as { card_id?: unknown; token?: unknown; device_type?: unknown } | null;
     const cardId = body?.card_id;
     const rawToken = body?.token;
     const deviceType = body?.device_type ?? "unknown";
