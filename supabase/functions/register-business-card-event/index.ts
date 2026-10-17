@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     });
     if (globalError || globalAllowed !== true) {
       if (globalError) console.error("Global rate-limit check failed:", globalError.message);
-      return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "rate_limited" }, globalError ? 503 : 429);
+      return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "global_rate_limited" }, globalError ? 503 : 429);
     }
 
     // Do not trust caller-controlled IP headers for rate-limit identity. The global ceiling remains active.
