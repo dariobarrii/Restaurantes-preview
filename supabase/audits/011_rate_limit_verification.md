@@ -18,7 +18,7 @@ These changes were applied only to Supabase project `NQ Central Security Test` (
 - In a rolled-back SQL transaction, the rate-limit function allowed the first two requests with a limit of two and rejected the third. The transaction was rolled back to leave no test bucket behind.
 - Permission checks returned for both test and production-named rate-limit functions: anon cannot read rate-limit rows; authenticated cannot read rate-limit rows; neither role can execute the limiter function; service_role can execute it.
 - Deployed Edge Function `register-nfc-event` version 3 with JWT verification disabled for token-based access; it checks rate limits before parsing or processing event registration.
-- GitHub Actions run 32 passed Deno type-checking for both Edge Functions, JavaScript syntax/security checks, dependency-free scanner-flow tests, and HTTP smoke tests against the isolated test endpoint: GET → 405, OPTIONS → 200, oversized body → 413, malformed payload → 400 `invalid_request`, and wrong token → 200 `invalid_card`.
+- GitHub Actions run 36 passed Deno type-checking for both Edge Functions, JavaScript syntax/security checks, dependency-free scanner-flow tests, and HTTP smoke tests against the isolated test endpoint: GET → 405, OPTIONS → 200, oversized body → 413, malformed payload → 400 `invalid_request`, and wrong token → 200 `invalid_card`.
 
 ## Still not verified
 - No successful valid-token HTTP registration has been run end-to-end yet. The scanner behavior tests mock the DOM and network; they are not a real browser or physical NFC scan.
