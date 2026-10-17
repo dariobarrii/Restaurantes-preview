@@ -53,3 +53,7 @@ Do not merge PR #2 until all launch gates pass. Use only test cards and approved
 - Whether desktop, QR, NFC, signed-in and signed-out cases passed.
 - Counts before/after and the card/business IDs (never the bearer token).
 - Any failed step and the exact non-secret error response.
+
+## Additional isolated rate-limit verification (2026-10-17)
+
+- [x] Exercised `public.consume_business_card_rate_limit` in the isolated NQ Central Security Test project with a synthetic bucket and a limit of two requests per 60-second window. The first and second calls returned `true`; the third returned `false`. This verifies the database counter's basic threshold behavior only; it is not per-client protection for the public endpoint and does not authorize production migration 015.
