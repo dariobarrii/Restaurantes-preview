@@ -24,7 +24,8 @@ function json(body, status = 200, origin = "*") {
 }
 
 function validOrigin(origin, configured) {
-  if (!configured) return "*";
+  // Fail closed: deployment must explicitly configure the frontend origin allowlist.
+  if (!configured) return null;
   const allowed = configured.split(",").map((v) => v.trim()).filter(Boolean);
   return origin && allowed.includes(origin) ? origin : null;
 }
