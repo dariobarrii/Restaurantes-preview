@@ -10,7 +10,7 @@ These changes were applied only to Supabase project `NQ Central Security Test` (
 - A `SECURITY DEFINER` function atomically increments fixed-window counters and rejects malformed bucket keys or invalid limits.
 - The function is executable only by `service_role`; `anon` and `authenticated` cannot read the table or execute the function.
 - The test Edge Function version 3 applies a global ceiling of 600 POST requests per 60 seconds, and a per-client limit of 40 requests per 60 seconds when the request has a `cf-connecting-ip` header.
-- Requests with declared content length above 2 KB are rejected before body parsing.
+- Request bodies are read with a bounded stream; payloads over 2 KB are cancelled and rejected before JSON parsing, even if Content-Length is absent.
 - Old hashed bucket rows are opportunistically deleted after 24 hours using a transaction-scoped advisory lock to avoid concurrent cleanup work on every request.
 
 ## Checks completed
