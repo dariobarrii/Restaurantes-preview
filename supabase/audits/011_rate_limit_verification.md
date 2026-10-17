@@ -36,3 +36,10 @@ This section supersedes earlier version references in this file.
 - The CI burst test confirms HTTP 429 behavior for the isolated endpoint. It does not prove that a valid token can be registered through the production business-card endpoint.
 - The per-client header behavior is not yet independently verified against header spoofing. Treat it as conditional throttling, not as a proven trusted identity boundary.
 - No production deployment or data change was made during this verification.
+
+## Isolated business-card HTTP end-to-end update — 2026-10-17
+
+- Added a separate `register-business-card-event-e2e` function in the isolated test project using the current branch Edge Function source; production function was not replaced.
+- CI run 50 passed: valid token returns `{"ok":true}` and creates the expected isolated `nfc_tap` row; wrong token and inactive/revoked token return `invalid_card`. Run: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39035972534
+- The fixture RPC is a test-only implementation matching the production registration contract and constraint behavior. This is a valid isolated HTTP test of the branch handler, not proof that the deployed production function or real browser/phone NFC/QR flow works.
+- Remaining launch gates: browser card lifecycle/redirect tests, physical QR/NFC scan, two-account tenant isolation, leaked-password protection, and trusted client-IP/header handling.
