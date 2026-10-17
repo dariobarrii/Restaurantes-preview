@@ -59,6 +59,9 @@ jobs:
               print(f"{filename}: checked {len(parser.items)} inline script(s)")
           PY
 
+      - name: Test scanner flow behavior without network dependencies
+        run: node supabase/security-test/card-flow-smoke.mjs
+
       - name: Smoke-test deployed Edge Function input validation
         shell: bash
         run: |
