@@ -100,4 +100,13 @@ const rateLimited = await runCase({
 });
 assert.deepEqual(rateLimited.location.redirects, [TARGET], "rate limiting should not prevent a valid card from opening its destination");
 
+const globalRateLimited = await runCase({
+  responses: [
+    { ok: true, body: [{ id: CARD_ID, target_url: TARGET, status: "active", archived_at: null }] },
+    { ok: false, status: 429, body: { ok: false, error: "global_rate_limited" } },
+  ],
+});
+assert.equal(globalRateLimited.location.redirects.length, 0, "global limit must fail closed because token validation did not complete");
+assert.match(globalRateLimited.elements.message.textContent, /verificar la tarjeta/);
+
 console.log("Card scanner behavior tests passed: valid, malformed, paused, invalid/revoked, and rate-limited flows.");
