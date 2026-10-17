@@ -59,6 +59,29 @@ jobs:
               print(f"{filename}: checked {len(parser.items)} inline script(s)")
           PY
 
+      - name: Smoke-test deployed Edge Function input validation
+        shell: bash
+        run: |
+          KEY=$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path("card.html").read_text(encoding="utf-8")
+          match = re.search(r"const SUPABASE_KEY='([^']+)'", text)
+          if not match:
+              raise SystemExit("Could not find the publishable key")
+          print(match.group(1))
+          PY
+          )
+          STATUS=$(curl --silent --show-error --output /tmp/edge-response.json --write-out "%{http_code}" \
+            -X POST "https://qcvhxrudzjlgqlhvnkkl.supabase.co/functions/v1/register-business-card-event" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"card_id":"invalid","token":"invalid","device_type":"mobile"}')
+          cat /tmp/edge-response.json
+          test "$STATUS" = "400"
+          grep -q '"error":"invalid_request"' /tmp/edge-response.json
+
       - name: Assert security invariants
         shell: bash
         run: |
