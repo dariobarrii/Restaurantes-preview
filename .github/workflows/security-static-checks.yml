@@ -176,6 +176,25 @@ jobs:
           test "$LIMITED" = "1"
           grep -q '"error":"rate_limited"' /tmp/edge-rate-limit.json
 
+          # Verify a caller-supplied cf-connecting-ip cannot evade per-client throttling by rotating values.
+          SPOOF_LIMITED=0
+          for attempt in $(seq 1 45); do
+            FAKE_IP="198.51.100.$attempt"
+            STATUS=$(curl --silent --show-error --output /tmp/edge-spoof-limit.json --write-out "%{http_code}" \
+              -X POST "$ENDPOINT" \
+              -H "apikey: $KEY" \
+              -H "Authorization: Bearer $KEY" \
+              -H "Content-Type: application/json" \
+              -H "cf-connecting-ip: $FAKE_IP" \
+              --data '{"card_id":"invalid","token":"invalid","device_type":"mobile"}')
+            if [ "$STATUS" = "429" ]; then
+              SPOOF_LIMITED=1
+              break
+            fi
+          done
+          test "$SPOOF_LIMITED" = "1"
+          grep -q '"error":"rate_limited"' /tmp/edge-spoof-limit.json
+
       - name: Assert security invariants
         shell: bash
         run: |
