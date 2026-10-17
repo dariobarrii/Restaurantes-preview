@@ -85,3 +85,10 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [ ] Configure `NQ_GATEWAY_SHARED_SECRET` through Supabase's secret-management UI/CLI and configure the same random value as a Cloudflare Worker secret. No secret was generated, displayed, or stored in Git during this step.
 - [ ] Deploy Worker to an isolated hostname and verify direct-origin rejection and successful gateway request. A function deployment alone does not prove gateway security end to end.
 - [ ] Production release remains blocked pending Cloudflare configuration, isolated end-to-end tests, and physical NFC/QR validation.
+
+
+## Follow-up CI verification (2026-10-17)
+
+- [x] Security static checks passed in run 91: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39041399283.
+- [x] Gateway tests passed in run 18: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39041399290.
+- [ ] Deployed endpoint behavior has not been verified with an actual HTTP request because the available connected tools do not provide a safe invocation/test action. Do not infer end-to-end success from deployment status or unit tests alone.
