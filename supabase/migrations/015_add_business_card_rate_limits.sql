@@ -13,6 +13,17 @@ ALTER TABLE public.app_business_card_rate_limits ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.app_business_card_rate_limits FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.app_business_card_rate_limits TO service_role;
 
+CREATE TABLE IF NOT EXISTS public.app_business_card_rate_limit_maintenance (
+  id smallint PRIMARY KEY CHECK (id = 1),
+  last_cleanup_at timestamptz NOT NULL DEFAULT pg_catalog.clock_timestamp()
+);
+ALTER TABLE public.app_business_card_rate_limit_maintenance ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.app_business_card_rate_limit_maintenance FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.app_business_card_rate_limit_maintenance TO service_role;
+INSERT INTO public.app_business_card_rate_limit_maintenance (id, last_cleanup_at)
+VALUES (1, pg_catalog.clock_timestamp())
+ON CONFLICT (id) DO NOTHING;
+
 CREATE OR REPLACE FUNCTION public.consume_business_card_rate_limit(
   p_bucket_key text,
   p_max_requests integer,
@@ -25,6 +36,7 @@ SET search_path TO ''
 AS $function$
 DECLARE
   v_count integer;
+  v_cleanup_id smallint;
   v_now timestamptz := pg_catalog.clock_timestamp();
 BEGIN
   IF p_bucket_key IS NULL
@@ -40,8 +52,16 @@ BEGIN
   END IF;
 
   IF pg_catalog.pg_try_advisory_xact_lock(87423018::bigint) THEN
-    DELETE FROM public.app_business_card_rate_limits
-     WHERE updated_at < v_now - interval '24 hours';
+    UPDATE public.app_business_card_rate_limit_maintenance
+       SET last_cleanup_at = v_now
+     WHERE id = 1
+       AND last_cleanup_at < v_now - interval '1 hour'
+    RETURNING id INTO v_cleanup_id;
+
+    IF FOUND THEN
+      DELETE FROM public.app_business_card_rate_limits
+       WHERE updated_at < v_now - interval '24 hours';
+    END IF;
   END IF;
 
   INSERT INTO public.app_business_card_rate_limits AS current_limit
