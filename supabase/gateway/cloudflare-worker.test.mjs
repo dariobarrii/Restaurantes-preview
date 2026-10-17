@@ -75,3 +75,52 @@ test("enforces request body size even without content-length", async () => {
   assert.equal(response.status, 413);
   assert.equal((await response.json()).error, "request_too_large");
 });
+
+test("answers CORS preflight without calling the origin", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("preflight must not call origin"); };
+  try {
+    const response = await worker.fetch(request({ method: "OPTIONS", headers: { origin: "https://app.example" } }), env({ ALLOWED_ORIGINS: "https://app.example" }));
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("access-control-allow-origin"), "https://app.example");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects methods other than POST and OPTIONS", async () => {
+  const response = await worker.fetch(request({ method: "GET" }), env());
+  assert.equal(response.status, 405);
+  assert.equal((await response.json()).error, "method_not_allowed");
+});
+
+test("fails closed if the rate limiter throws", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("origin must not be called"); };
+  try {
+    const response = await worker.fetch(request(), env({ RATE_LIMITER: { limit: async () => { throw new Error("limiter unavailable"); } } }));
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).error, "rate_limit_unavailable");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects an oversized declared content length before reading the body", async () => {
+  const response = await worker.fetch(request({ headers: { "content-length": "2049" } }), env());
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "request_too_large");
+});
+
+test("normalizes upstream network errors without exposing details", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("secret upstream detail"); };
+  try {
+    const response = await worker.fetch(request(), env());
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error, "upstream_unavailable");
+    assert.doesNotMatch(await response.text().catch(() => ""), /secret upstream detail/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
