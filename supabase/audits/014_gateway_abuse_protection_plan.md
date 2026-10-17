@@ -120,3 +120,9 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Checked PR #2 review state: no submitted reviews or inline review threads were returned by GitHub.
 - [ ] The connected workflow-run lookup returns only pull-request-triggered runs and did not confirm CI for the latest push commits. Do not mark the newly added media-type tests or push-trigger change as CI-verified until an actual run is visible.
 - [ ] No connected operation is available to configure Supabase Edge Function secrets or create/deploy Cloudflare Worker/DNS resources. Isolated HTTP negative/positive tests, real limiter verification, physical NFC/QR tests, and production cutover remain blocked on those external controls.
+
+
+## Isolated rate-limit behavior test (2026-10-17)
+
+- [x] Executed a transactional assertion block against the isolated test project's `consume_business_card_rate_limit` RPC using a dedicated synthetic bucket. The function allowed requests 1 and 2 with a limit of 2, rejected request 3, and rejected malformed bucket keys, a zero request limit, and a window above the configured maximum. The assertion block completed without exception.
+- [ ] This verifies database RPC behavior only. It does not validate the deployed Edge Function's HTTP secret gate, Cloudflare binding behavior, or the full event-registration path.
