@@ -62,18 +62,11 @@ jobs:
       - name: Smoke-test deployed Edge Function input validation
         shell: bash
         run: |
-          KEY=$(python3 - <<'PY'
-          import re
-          from pathlib import Path
-          text = Path("card.html").read_text(encoding="utf-8")
-          match = re.search(r"const SUPABASE_KEY='([^']+)'", text)
-          if not match:
-              raise SystemExit("Could not find the publishable key")
-          print(match.group(1))
-          PY
-          )
+          # Keep CI smoke tests isolated to NQ Central Security Test; never hit the live restaurant project.
+          KEY='sb_publishable_pf86bqfSq1qq1HwQ0ECFjw_fz_DPzLw'
+          ENDPOINT='https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-nfc-event'
           STATUS=$(curl --silent --show-error --output /tmp/edge-response.json --write-out "%{http_code}" \
-            -X POST "https://qcvhxrudzjlgqlhvnkkl.supabase.co/functions/v1/register-business-card-event" \
+            -X POST "$ENDPOINT" \
             -H "apikey: $KEY" \
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/json" \
@@ -83,11 +76,11 @@ jobs:
           grep -q '"error":"invalid_request"' /tmp/edge-response.json
 
           STATUS=$(curl --silent --show-error --output /tmp/edge-invalid-token.json --write-out "%{http_code}" \
-            -X POST "https://qcvhxrudzjlgqlhvnkkl.supabase.co/functions/v1/register-business-card-event" \
+            -X POST "$ENDPOINT" \
             -H "apikey: $KEY" \
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/json" \
-            --data '{"card_id":"83c4afa6-e364-4686-abae-e2d8f3307085","token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","device_type":"mobile"}')
+            --data '{"card_id":"11111111-1111-4111-8111-111111111111","token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","device_type":"mobile"}')
           cat /tmp/edge-invalid-token.json
           test "$STATUS" = "200"
           grep -q '"error":"invalid_card"' /tmp/edge-invalid-token.json
@@ -100,7 +93,7 @@ jobs:
 
           index = Path("index.html").read_text(encoding="utf-8")
           card = Path("card.html").read_text(encoding="utf-8")
-          edge = Path("supabase/functions/register-business-card-event/index.ts").read_text(encoding="utf-8")
+          edge = Path("supabase/security-test/functions/register-nfc-event/index.ts").read_text(encoding="utf-8")
 
           assert "from('nfc_events')" not in index, "Admin/client HTML must not directly query or write legacy nfc_events"
           assert "SUPABASE_SERVICE_ROLE_KEY" not in index and "SUPABASE_SERVICE_ROLE_KEY" not in card, "Service role env name leaked into public HTML"
