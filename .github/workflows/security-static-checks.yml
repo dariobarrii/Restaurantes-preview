@@ -176,7 +176,7 @@ jobs:
           test "$LIMITED" = "1"
           grep -q '"error":"rate_limited"' /tmp/edge-rate-limit.json
 
-          # Verify a caller-supplied cf-connecting-ip cannot evade per-client throttling by rotating values.
+          # Verify a caller-supplied x-real-ip cannot evade per-client throttling by rotating values.
           SPOOF_LIMITED=0
           for attempt in $(seq 1 45); do
             FAKE_IP="198.51.100.$attempt"
@@ -185,7 +185,7 @@ jobs:
               -H "apikey: $KEY" \
               -H "Authorization: Bearer $KEY" \
               -H "Content-Type: application/json" \
-              -H "cf-connecting-ip: $FAKE_IP" \
+              -H "x-real-ip: $FAKE_IP" \
               --data '{"card_id":"invalid","token":"invalid","device_type":"mobile"}')
             if [ "$STATUS" = "429" ]; then
               SPOOF_LIMITED=1
