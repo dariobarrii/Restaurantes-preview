@@ -20,6 +20,16 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Edge Functions
+        run: |
+          deno check supabase/security-test/functions/register-nfc-event/index.ts
+          deno check supabase/functions/register-business-card-event/index.ts
+
       - name: Parse inline JavaScript
         shell: bash
         run: |
