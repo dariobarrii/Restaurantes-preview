@@ -52,3 +52,11 @@ The Supabase Edge Function remains reachable at its native URL, so merely puttin
 ## Safety notes
 
 This document is a plan only. It does not create DNS records, buy a domain or plan, add secrets, deploy a Worker, deploy an Edge Function, or change production data/settings. The existing production function must not be considered gateway-protected until the direct-origin negative test passes.
+## Branch implementation update (2026-10-17)
+
+- [x] Added an initial Cloudflare Worker gateway implementation at `supabase/gateway/cloudflare-worker.js`. It fails closed when required configuration is absent, limits body size, uses the edge-provided client identity, applies the configured rate-limiter binding, and injects the gateway secret server-side.
+- [x] Added Node test cases at `supabase/gateway/cloudflare-worker.test.mjs` for missing configuration, missing client identity, rate-limit rejection, secret injection, origin allowlist, and body size.
+- [x] Added a gateway-secret check to the branch Edge Function source. Requests without a configured secret or with a missing/mismatched `x-nq-gateway-secret` are rejected with 403 before database access.
+- [ ] Execute the Worker tests in CI and confirm the Cloudflare rate-limiter binding implementation matches the deployed Cloudflare configuration.
+- [ ] Configure secrets in the isolated environment and prove that direct-origin requests fail closed while Worker-origin requests succeed.
+- [ ] Do not deploy this branch Edge Function until the Worker, secret values, rate-limit binding, and endpoint are configured together. The production function remains unchanged.
