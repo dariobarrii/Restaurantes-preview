@@ -22,6 +22,7 @@ requests executed as PostgreSQL role `authenticated` with each synthetic
 
 - Tenant A UUID `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`: event 90001 and review 90001 only.
 - Tenant B UUID `bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`: event 90002 and review 90002 only.
+- Unapproved synthetic identity `cccccccc-cccc-4ccc-8ccc-cccccccccccc`: zero events and zero review snapshots visible.
 - `has_table_privilege(authenticated, app_business_card_tokens, SELECT)` was false.
 
 This is a real PostgreSQL RLS check under the authenticated database role, not
@@ -34,8 +35,7 @@ with actual approved Auth users. No production memberships or data were changed.
   exposes database/functions operations but no Auth-provider setting mutation.
   It remains a dashboard-only manual action in Tzura.
 - Physical NFC and QR: a real phone/tag are required.
-- Browser account integration: test Auth users and browser runtime are required;
-  the database policy layer is now independently verified.
+- Browser account integration: SQL RLS simulation is verified; a real browser/Auth-session check with two approved test accounts is still required.
 - Per-client abuse protection: the direct Supabase endpoint does not expose a
   trustworthy client identity to the function. Do not trust client-supplied IP
   headers. A proxy/WAF with non-spoofable client identity, plus a protected
