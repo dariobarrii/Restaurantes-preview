@@ -39,5 +39,5 @@ Do not merge PR #2 until this checklist passes. Use only test cards and approved
 - Valid-token HTTP request tested end-to-end.
 - Desktop scan and physical mobile QR/NFC scan pass.
 - Two-account tenant isolation passes.
-- Leaked-password protection enabled in Supabase Auth.
+- Leaked-password protection enabled in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email.
 - Production migration 015 and matching production Edge Function deployed together only after the above checks pass.
