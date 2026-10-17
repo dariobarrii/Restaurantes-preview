@@ -95,7 +95,12 @@ export default {
       return json({ ok: false, error: "upstream_unavailable" }, 502, corsOrigin);
     }
 
-    const responseBody = await upstream.arrayBuffer();
+    let responseBody;
+    try {
+      responseBody = await upstream.arrayBuffer();
+    } catch {
+      return json({ ok: false, error: "upstream_unavailable" }, 502, corsOrigin);
+    }
     const headers = new Headers({
       "content-type": upstream.headers.get("content-type") || "application/json; charset=utf-8",
       "cache-control": "no-store",
