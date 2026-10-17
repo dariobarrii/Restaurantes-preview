@@ -1,0 +1,82 @@
+name: Security static checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Parse inline JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.current = None
+                  self.items = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script":
+                      attrs = dict(attrs)
+                      if "src" not in attrs:
+                          self.current = {"type": attrs.get("type", ""), "body": []}
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current["body"].append(data)
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.current is not None:
+                      self.items.append(self.current)
+                      self.current = None
+
+          for filename in ("index.html", "card.html"):
+              parser = Scripts()
+              parser.feed(Path(filename).read_text(encoding="utf-8"))
+              for i, item in enumerate(parser.items):
+                  suffix = ".mjs" if item["type"] == "module" else ".js"
+                  with tempfile.NamedTemporaryFile("w", suffix=suffix, encoding="utf-8") as f:
+                      f.write("".join(item["body"]))
+                      f.flush()
+                      subprocess.run(["node", "--check", f.name], check=True)
+              print(f"{filename}: checked {len(parser.items)} inline script(s)")
+          PY
+
+      - name: Assert security invariants
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path("index.html").read_text(encoding="utf-8")
+          card = Path("card.html").read_text(encoding="utf-8")
+          edge = Path("supabase/functions/register-business-card-event/index.ts").read_text(encoding="utf-8")
+
+          assert "from('nfc_events')" not in index, "Admin/client HTML must not directly query or write legacy nfc_events"
+          assert "SUPABASE_SERVICE_ROLE_KEY" not in index and "SUPABASE_SERVICE_ROLE_KEY" not in card, "Service role env name leaked into public HTML"
+          assert "new URLSearchParams(location.hash.slice(1)).get('token')" in card, "Scanner must read bearer token from URL fragment"
+          assert "history.replaceState" in card, "Scanner must remove token from address bar"
+          assert "/functions/v1/register-business-card-event" in card, "Scanner must call secure event endpoint"
+          assert "from('nfc_events').insert" not in card, "Scanner must not write legacy events directly"
+          assert "crypto.subtle.digest" in edge, "Edge Function must hash raw token server-side"
+          assert 'Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")' in edge, "Edge Function must read service role only from server environment"
+          assert "sb_secret_" not in index and "sb_secret_" not in card and "sb_secret_" not in edge, "Secret-format key found in source"
+          print("Security invariants passed.")
+          PY
