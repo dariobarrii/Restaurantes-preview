@@ -19,6 +19,13 @@ FOR ALL TO authenticated
 USING (public.app_is_admin())
 WITH CHECK (public.app_is_admin());
 
+DROP POLICY IF EXISTS "Public can read active cards" ON public.app_business_cards;
+DROP POLICY IF EXISTS app_business_cards_public_active_select ON public.app_business_cards;
+CREATE POLICY app_business_cards_public_active_select
+ON public.app_business_cards
+FOR SELECT TO anon, authenticated
+USING (status = 'active' AND archived_at IS NULL);
+
 CREATE OR REPLACE FUNCTION public.register_business_card_event_with_token(
   p_card_id uuid,
   p_token_hash text,
