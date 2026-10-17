@@ -65,6 +65,32 @@ jobs:
           # Keep CI smoke tests isolated to NQ Central Security Test; never hit the live restaurant project.
           KEY='sb_publishable_pf86bqfSq1qq1HwQ0ECFjw_fz_DPzLw'
           ENDPOINT='https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-nfc-event'
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-method.json --write-out "%{http_code}" \
+            -X GET "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+          test "$STATUS" = "405"
+          grep -q '"error":"method_not_allowed"' /tmp/edge-method.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-options.txt --write-out "%{http_code}" \
+            -X OPTIONS "$ENDPOINT" \
+            -H "Origin: https://example.com" \
+            -H "Access-Control-Request-Method: POST")
+          test "$STATUS" = "200"
+          python3 - <<'PY'
+          from pathlib import Path
+          Path("/tmp/oversized-body.txt").write_text("x" * 3000, encoding="utf-8")
+          PY
+          STATUS=$(curl --silent --show-error --output /tmp/edge-oversized.json --write-out "%{http_code}" \
+            -X POST "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/oversized-body.txt)
+          test "$STATUS" = "413"
+          grep -q '"error":"request_too_large"' /tmp/edge-oversized.json
+
           STATUS=$(curl --silent --show-error --output /tmp/edge-response.json --write-out "%{http_code}" \
             -X POST "$ENDPOINT" \
             -H "apikey: $KEY" \
