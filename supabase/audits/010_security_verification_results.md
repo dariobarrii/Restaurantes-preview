@@ -11,6 +11,7 @@
 ### Tzura SteakHouse / NQ Central app database
 - Applied token-gated card registration: `app_business_card_tokens`, `register_business_card_event_with_token`, and Edge Function `register-business-card-event` version 1.
 - Public direct read/write access to legacy event tables remains revoked.
+- Moved `app_is_admin()` and `app_is_approved_member(uuid)` into the non-public `private` schema, retained only the permissions required for RLS evaluation, and updated the profile-protection trigger. The two SECURITY DEFINER RPC warnings disappeared from Supabase Security Advisor.
 - Active card metadata remains publicly readable to support scanning; token hashes are private and admin-managed.
 - The legacy event mirror now copies `card_id` and `device_type` into `app_business_events`, preserving per-card analytics.
 - Admin card usage reads from `app_business_events`, not the locked-down `nfc_events` table.
@@ -46,7 +47,7 @@ Using the approved Feral restaurant account in a transaction under the `authenti
 - The admin profile could see all 4 businesses and 102 pre-test events.
 
 ## Remaining before launch
-- GitHub Actions passed JavaScript syntax/security invariants and made a real HTTP POST to the deployed `register-business-card-event` endpoint; malformed payload returned HTTP 400 with `invalid_request`. Still invoke the endpoint with valid, wrong, revoked, and rate-limited token payloads. The available Supabase integration has no direct invocation action; SQL RPC behavior was tested independently.
+- GitHub Actions passed JavaScript syntax/security invariants and made real HTTP POSTs to the deployed `register-business-card-event` endpoint: malformed input returned HTTP 400 `invalid_request`, and a syntactically valid request with a wrong token returned HTTP 200 `invalid_card` through the database RPC. Valid-token, revoked-token, and rate-limit behavior were verified at the SQL RPC layer; full valid-token HTTP and browser scan remain pending.
 - Browser-test card creation, token rotation, and a complete QR/NFC scan on desktop and phone. Static code checks passed, but the browser flow has not yet been executed end-to-end. The card scanner no longer loads a third-party JavaScript bundle; it uses native fetch calls, keeps the token in the URL fragment, and removes it from the address bar.
 - Configure Supabase Auth leaked-password protection in project settings; it is currently disabled in Tzura SteakHouse.
 - Add an IP/global abuse throttle or gateway protection before public launch; current rate limit is per card (one accepted event per two seconds per card).
