@@ -92,3 +92,11 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Security static checks passed in run 91: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39041399283.
 - [x] Gateway tests passed in run 18: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39041399290.
 - [ ] Deployed endpoint behavior has not been verified with an actual HTTP request because the available connected tools do not provide a safe invocation/test action. Do not infer end-to-end success from deployment status or unit tests alone.
+
+
+## CI follow-up (2026-10-17, latest)
+
+- [x] Gateway tests passed in run 19: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39042122907.
+- [x] Security static checks passed in run 92: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39042122829.
+- [ ] The remaining work is external runtime setup and end-to-end validation, not a known failing CI check: configure a unique shared secret in isolated Supabase and Cloudflare, provision the Worker rate-limiting binding/hostname, verify HTTP direct-origin rejection and successful gateway event, then test NFC/QR on devices.
+- [ ] Keep production migration 015, production function deployment, DNS/frontend cutover, and PR merge on hold until the isolated request path is verified. No production changes were made as part of this follow-up.
