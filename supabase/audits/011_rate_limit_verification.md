@@ -30,11 +30,11 @@ These changes were applied only to Supabase project `NQ Central Security Test` (
 
 This section supersedes earlier version references in this file.
 
-- The isolated test endpoint `register-nfc-event` is currently deployed as version 5, not version 3.
-- Production `register-business-card-event` remains version 1 and does **not** yet contain the request-body cap or global/per-client rate limiting described for the branch version.
+- The isolated test endpoint `register-nfc-event` is currently deployed as version 7.
+- Production `register-business-card-event` remains version 1 and does **not** yet contain the request-body cap or global rate ceiling in the branch version. The branch handlers enforce a global ceiling only; per-client throttling was removed after the IP-header spoof test.
 - Production migration `015_add_business_card_rate_limits.sql` has not been applied to the Tzura project. The same migration was exercised in the isolated test project, where the rate-limit table, maintenance table, and limiter function are present.
-- The CI burst test confirms HTTP 429 behavior for the isolated endpoint. It does not prove that a valid token can be registered through the production business-card endpoint.
-- The per-client header behavior is not yet independently verified against header spoofing. Treat it as conditional throttling, not as a proven trusted identity boundary.
+- Earlier CI runs tested a per-client burst limiter that has since been removed because the caller-controlled header could be varied. The current CI validates request handling and isolated business-card token behavior; it does not deploy or test production.
+- The spoof test showed that caller-supplied `cf-connecting-ip` could be varied to avoid per-client buckets; `x-real-ip` was not a verified trusted alternative. The branch handlers no longer trust either header. Add gateway/WAF-level rate limiting before public launch.
 - No production deployment or data change was made during this verification.
 
 ## Isolated business-card HTTP end-to-end update — 2026-10-17
@@ -43,3 +43,10 @@ This section supersedes earlier version references in this file.
 - CI run 50 passed: valid token returns `{"ok":true}` and creates the expected isolated `nfc_tap` row; wrong token and inactive/revoked token return `invalid_card`. Run: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39035972534
 - The fixture RPC is a test-only implementation matching the production registration contract and constraint behavior. This is a valid isolated HTTP test of the branch handler, not proof that the deployed production function or real browser/phone NFC/QR flow works.
 - Remaining launch gates: browser card lifecycle/redirect tests, physical QR/NFC scan, two-account tenant isolation, leaked-password protection, and trusted client-IP/header handling.
+
+
+## Rate-limit identity correction — 2026-10-17
+
+- CI HTTP testing found that a caller could vary `cf-connecting-ip` and avoid the previous per-client limiter. The test runtime did not establish a reliable trusted client IP header.
+- Removed per-client rate limiting from both branch Edge Function handlers rather than claim a spoofable control is protective. The global request ceiling remains 600 requests per 60 seconds; the per-card RPC still applies a 2-second cooldown to accepted events. Global limiting does not prevent a concentrated caller from exhausting the shared allowance.
+- The branch code does not use `cf-connecting-ip` or `x-real-ip` as a security identity. Gateway/WAF-level abuse protection remains a launch gate. No production function or migration was changed.
