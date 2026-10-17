@@ -55,6 +55,11 @@ export default {
       return json({ ok: false, error: "gateway_not_configured" }, 503, corsOrigin);
     }
 
+    const contentType = request.headers.get("content-type") || "";
+    if (!/^application\/json(?:\s*;|\s*$)/i.test(contentType)) {
+      return json({ ok: false, error: "unsupported_media_type" }, 415, corsOrigin);
+    }
+
     const declaredLength = Number(request.headers.get("content-length") || "0");
     if (declaredLength > MAX_BODY_BYTES) return json({ ok: false, error: "request_too_large" }, 413, corsOrigin);
 
