@@ -76,7 +76,7 @@ try {
   await runScenario({ name: "paused card rejected", incomingToken: validToken, cardStatus: "paused", expectedRedirect: false, expectNoFunction: true });
   await runScenario({ name: "revoked token rejected", incomingToken: validToken, functionResult: { status: 200, body: { ok: false, error: "invalid_card" } }, currentToken: rotatedToken, expectedRedirect: false });
   await runScenario({ name: "global limit fails closed", incomingToken: validToken, functionResult: { status: 429, body: { ok: false, error: "global_rate_limited" } }, expectedRedirect: false });
-  await runScenario({ name: "validated card cooldown can redirect", incomingToken: validToken, functionResult: { status: 200, body: { ok: false, error: "rate_limited" } }, expectedRedirect: true });
+  await runScenario({ name: "rate limit before token validation fails closed", incomingToken: validToken, functionResult: { status: 200, body: { ok: false, error: "rate_limited" } }, expectedRedirect: false });
   console.log("Browser smoke tests passed: fragment removal, destination redirect, token rotation/revocation, paused card, and rate-limit fail-closed behavior.");
 } finally {
   await browser.close();
