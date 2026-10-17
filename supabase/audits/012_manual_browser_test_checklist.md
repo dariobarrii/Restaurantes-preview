@@ -6,7 +6,7 @@ Do not merge PR #2 until all launch gates pass. Use only test cards and approved
 
 - [x] Branch business-card handler tested over HTTP against the isolated fixture: valid token accepted; wrong and inactive/revoked tokens rejected. This does not mean the production function has been deployed.
 - [x] SQL tenant-isolation test in NQ Central Security Test: two synthetic authenticated identities see only their own business events and review snapshots; neither can SELECT token hashes.
-- [ ] Chromium browser smoke test in CI: fragment removal before API call, destination redirect, token rotation/revocation, paused-card behavior, and rate-limit handling. The CI job has been added; mark complete only after its latest run passes.
+- [x] Chromium browser smoke test in CI passed on run 70: fragment removal before API call, destination redirect, token rotation/revocation, paused-card behavior, and rate-limit handling. This is a mocked-backend browser test, not a physical-device test.
 - [x] Production event mirror audit: 103 legacy events, 103 mirrors, zero missing mirrors and zero orphan mirrors.
 - [x] Migration 009 discrepancy resolved in branch: the file is now a comment-only no-op because its legacy table/function do not exist in production. It has not been applied to production.
 
