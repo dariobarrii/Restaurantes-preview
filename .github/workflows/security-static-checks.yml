@@ -94,6 +94,8 @@ jobs:
           index = Path("index.html").read_text(encoding="utf-8")
           card = Path("card.html").read_text(encoding="utf-8")
           edge = Path("supabase/security-test/functions/register-nfc-event/index.ts").read_text(encoding="utf-8")
+          production_edge = Path("supabase/functions/register-business-card-event/index.ts").read_text(encoding="utf-8")
+          production_rate_migration = Path("supabase/migrations/015_add_business_card_rate_limits.sql").read_text(encoding="utf-8")
 
           assert "from('nfc_events')" not in index, "Admin/client HTML must not directly query or write legacy nfc_events"
           assert "SUPABASE_SERVICE_ROLE_KEY" not in index and "SUPABASE_SERVICE_ROLE_KEY" not in card, "Service role env name leaked into public HTML"
@@ -103,6 +105,10 @@ jobs:
           assert "from('nfc_events').insert" not in card, "Scanner must not write legacy events directly"
           assert "crypto.subtle.digest" in edge, "Edge Function must hash raw token server-side"
           assert 'Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")' in edge, "Edge Function must read service role only from server environment"
-          assert "sb_secret_" not in index and "sb_secret_" not in card and "sb_secret_" not in edge, "Secret-format key found in source"
+          assert "sb_secret_" not in index and "sb_secret_" not in card and "sb_secret_" not in edge and "sb_secret_" not in production_edge, "Secret-format key found in source"
+          assert 'consume_business_card_rate_limit' in production_edge, "Production scanner endpoint must enforce database rate limits"
+          assert 'contentLength > 2048' in production_edge, "Production scanner endpoint must cap request size"
+          assert 'CREATE TABLE IF NOT EXISTS public.app_business_card_rate_limits' in production_rate_migration, "Production rate-limit table migration missing"
+          assert 'GRANT EXECUTE ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) TO service_role' in production_rate_migration, "Rate limiter must be service_role-only"
           print("Security invariants passed.")
           PY
