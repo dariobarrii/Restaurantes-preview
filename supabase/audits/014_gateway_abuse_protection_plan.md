@@ -60,3 +60,6 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [ ] Execute the Worker tests in CI and confirm the Cloudflare rate-limiter binding implementation matches the deployed Cloudflare configuration.
 - [ ] Configure secrets in the isolated environment and prove that direct-origin requests fail closed while Worker-origin requests succeed.
 - [ ] Do not deploy this branch Edge Function until the Worker, secret values, rate-limit binding, and endpoint are configured together. The production function remains unchanged.
+- [x] Added GitHub Actions workflow `.github/workflows/gateway-tests.yml` to run the Worker unit tests on relevant branch pushes and pull requests.
+- [x] Gateway unit tests passed in GitHub Actions run 2: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39039755958
+- [ ] The test result is unit-level only; production gateway configuration, direct-origin rejection, DNS/custom hostname, and phone-based scan flow remain unverified.
