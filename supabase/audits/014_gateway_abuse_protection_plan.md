@@ -76,3 +76,12 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Added `supabase/gateway/README.md` deployment runbook with isolated validation and production release ordering.
 - [ ] Infrastructure release gates remain open: no configured shared secret, no deployed isolated Worker/hostname, no verified real Cloudflare rate-limiter binding, and no phone/NFC/QR end-to-end proof. The available connected Supabase actions do not expose a safe secret-setting workflow; do not deploy the Edge Function before the secret is set out-of-band.
 - [ ] Production migration 015, Edge Function deployment, DNS cutover, and PR merge remain intentionally blocked until those gates pass.
+
+
+## Isolated function deployment update (2026-10-17)
+
+- [x] Deployed the branch version of the gateway-protected business-card Edge Function as a separate test-only function, `register-business-card-event-secure-test`, in project `rxxbmqilnozcnpwguqga` (NQ Central Security Test). This does not replace the existing test function or production function.
+- [x] Confirmed the isolated project's business-card rate-limit table, maintenance table, and RPC exist.
+- [ ] Configure `NQ_GATEWAY_SHARED_SECRET` through Supabase's secret-management UI/CLI and configure the same random value as a Cloudflare Worker secret. No secret was generated, displayed, or stored in Git during this step.
+- [ ] Deploy Worker to an isolated hostname and verify direct-origin rejection and successful gateway request. A function deployment alone does not prove gateway security end to end.
+- [ ] Production release remains blocked pending Cloudflare configuration, isolated end-to-end tests, and physical NFC/QR validation.
