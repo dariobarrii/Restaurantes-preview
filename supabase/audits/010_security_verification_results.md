@@ -57,3 +57,14 @@ Using the approved Feral restaurant account in a transaction under the `authenti
 - Keep PR #2 in draft until these checks pass.
 
 No service-role key or raw test token is committed to the repository. No production release or PR merge was performed.
+
+
+## Status correction — 2026-10-17, latest read-only verification
+
+This addendum supersedes any conflicting version numbers or deployment statements above.
+
+- **Production project qcvhxrudzjlgqlhvnkkl:** migrations 008–014 are recorded. Migration 015 is not recorded and has not been applied. The active register-business-card-event Edge Function is still version 1; its deployed SHA is 7c254e8851c98fd47610130c2dc042881a086c9428b00e3c98e54c7cf224c6d8. Do not treat the newer rate-limit code in the PR as deployed to production.
+- **Isolated security-test project rxxbmqilnozcnpwguqga:** register-nfc-event is active at version 5 with verify_jwt=false. The rate-limit tables and functions are present; limiter RPC execution is granted to service_role (plus the database owner). HTTP smoke tests previously passed for method handling, malformed input, oversized bodies, wrong token, and burst throttling. A valid-token HTTP request has not yet been proven against the current business-card endpoint.
+- **Production Auth advisor:** leaked-password protection is still disabled. This is a launch blocker requiring a project setting change.
+- **Production security advisor:** it reports three informational RLS-enabled/no-policy findings for legacy nfc_events, nfc_stats, and veta_daily_review_totals. These need contextual review because the legacy tables were intentionally locked down; do not add permissive policies merely to silence the advisor.
+- **Current release gate:** keep PR #2 in draft and do not deploy migration 015 or replace the production Edge Function until the valid-token HTTP path, browser token rotation/revocation, real QR/NFC phone scan, and two-account tenant isolation are verified. No production data was changed during this read-only verification.
