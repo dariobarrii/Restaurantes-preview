@@ -35,9 +35,12 @@ Do not merge PR #2 until this checklist passes. Use only test cards and approved
 - Counts before/after and the card/business IDs (never the bearer token).
 - Any failed step and the exact non-secret error response.
 
-## Launch blockers
-- Valid-token HTTP request tested end-to-end.
-- Desktop scan and physical mobile QR/NFC scan pass.
-- Two-account tenant isolation passes.
-- Leaked-password protection enabled in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email.
-- Production migration 015 and matching production Edge Function deployed together only after the above checks pass.
+## Launch gates
+
+- [x] Branch business-card handler tested over HTTP against the isolated fixture: valid token accepted; wrong and inactive/revoked tokens rejected. This does not mean the production function has been deployed.
+- [ ] Desktop browser test: fragment removal, redirect, correct event attribution, token rotation/revocation, and paused-card behavior.
+- [ ] Physical mobile QR and NFC scans pass on a real phone.
+- [ ] Two-account tenant isolation passes for approved restaurant accounts.
+- [ ] Leaked-password protection enabled in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email.
+- [ ] Confirm caller-supplied `cf-connecting-ip` cannot evade the per-client rate limiter; latest CI adds a spoof-header test against the isolated endpoint.
+- [ ] Production migration 015 and matching production Edge Function deployed together only after all preceding gates pass.
