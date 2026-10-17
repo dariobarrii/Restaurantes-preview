@@ -13,6 +13,33 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 const isHexToken = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+
+class PayloadTooLargeError extends Error {}
+
+async function readJsonBodyLimited(req: Request, maxBytes: number): Promise<unknown> {
+  const reader = req.body?.getReader();
+  if (!reader) throw new Error("empty_body");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new PayloadTooLargeError();
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -21,9 +48,6 @@ async function sha256Hex(value: string): Promise<string> {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
-
-  const contentLength = Number(req.headers.get("content-length") || "0");
-  if (contentLength > 2048) return jsonResponse({ ok: false, error: "request_too_large" }, 413);
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -60,7 +84,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const body = await req.json();
+    const body = await readJsonBodyLimited(req, 2048);
     const cardId = body?.card_id;
     const rawToken = body?.token;
     const deviceType = body?.device_type ?? "unknown";
@@ -81,7 +105,10 @@ Deno.serve(async (req: Request) => {
     if (result?.ok === true) return jsonResponse({ ok: true });
     if (["invalid_card", "rate_limited", "invalid_request"].includes(result?.error || "")) return jsonResponse(result);
     return jsonResponse({ ok: false, error: "registration_failed" }, 500);
-  } catch {
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return jsonResponse({ ok: false, error: "request_too_large" }, 413);
+    }
     return jsonResponse({ ok: false, error: "invalid_request" }, 400);
   }
 });
