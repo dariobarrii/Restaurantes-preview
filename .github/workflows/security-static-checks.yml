@@ -124,6 +124,41 @@ jobs:
           test "$STATUS" = "200"
           grep -q '"error":"invalid_card"' /tmp/edge-invalid-token.json
 
+          # Exercise the business-card endpoint against its isolated test fixture (never production).
+          BUSINESS_CARD_ENDPOINT='https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-business-card-event-e2e'
+          VALID_TOKEN=$(printf '%s' 'NQ Central isolated HTTP E2E test token v1' | sha256sum | cut -d' ' -f1)
+          REVOKED_TOKEN=$(printf '%s' 'NQ Central isolated HTTP E2E revoked token v1' | sha256sum | cut -d' ' -f1)
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-valid.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"33333333-3333-4333-8333-333333333333\",\"token\":\"$VALID_TOKEN\",\"device_type\":\"mobile\"}")
+          cat /tmp/business-card-valid.json
+          test "$STATUS" = "200"
+          grep -q '"ok":true' /tmp/business-card-valid.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-wrong-token.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"33333333-3333-4333-8333-333333333333\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"mobile\"}")
+          cat /tmp/business-card-wrong-token.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/business-card-wrong-token.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-revoked.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"44444444-4444-4444-8444-444444444444\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"qr\"}")
+          cat /tmp/business-card-revoked.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/business-card-revoked.json
+
           # Confirm the hosted runtime provides a stable client-IP header and enforces the per-client cap.
           LIMITED=0
           for attempt in $(seq 1 45); do
