@@ -49,6 +49,13 @@ VALUES
  ('44444444-4444-4444-8444-444444444444','2941f678f4daab4a11cbc86f664aa2d8d148cfe708128309aed3fe4c37a9bd1e',false,NULL)
 ON CONFLICT (card_id) DO UPDATE SET token_hash=EXCLUDED.token_hash, active=EXCLUDED.active, last_event_at=NULL;
 
+-- The existing test events table has a foreign key to the legacy test token registry.
+INSERT INTO public.nfc_card_tokens (card_id,token_hash,restaurant,event,active,last_event_at)
+VALUES
+ ('33333333-3333-4333-8333-333333333333','53e05a279b038d35e1ff2ff79e7a57d7ab77c26e8cde5ea685ea264497ce96a5','Feral Steakhouse','nfc_tap',true,NULL),
+ ('44444444-4444-4444-8444-444444444444','2941f678f4daab4a11cbc86f664aa2d8d148cfe708128309aed3fe4c37a9bd1e','Feral Steakhouse','qr_scan',true,NULL)
+ON CONFLICT (card_id) DO UPDATE SET token_hash=EXCLUDED.token_hash, restaurant=EXCLUDED.restaurant, event=EXCLUDED.event, active=EXCLUDED.active, last_event_at=NULL;
+
 CREATE OR REPLACE FUNCTION public.register_business_card_event_with_token(
   p_card_id uuid, p_token_hash text, p_device_type text
 ) RETURNS jsonb
