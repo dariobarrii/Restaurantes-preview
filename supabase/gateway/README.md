@@ -40,7 +40,7 @@ GitHub Actions also runs this command for changes to this directory.
 - [ ] Send a request to the native Supabase function URL without the gateway secret; it must return 403 and create no event.
 - [ ] Send a valid request through the Worker; confirm the token validates and exactly one expected event is recorded.
 - [ ] Test invalid, paused, archived, and revoked cards; none may create an event.
-- [ ] Test OPTIONS, allowed/disallowed origins, malformed JSON, missing headers, oversized bodies, rate-limit exhaustion, and upstream outage.
+- [ ] Test OPTIONS, allowed/disallowed origins, JSON and non-JSON media types, malformed JSON, missing headers, oversized bodies, rate-limit exhaustion, and upstream outage.
 - [ ] Scan a real QR code and NFC tag with an iPhone and an Android device if available; verify the expected destination and event count.
 - [ ] Confirm rollback steps and monitor logs for false positives before any production cutover.
 
