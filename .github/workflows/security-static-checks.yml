@@ -74,6 +74,13 @@ jobs:
               print(f"{filename}: checked {len(parser.items)} inline script(s)")
           PY
 
+      - name: Run real-browser scanner smoke tests
+        shell: bash
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node supabase/security-test/card-browser-smoke.mjs
+
       - name: Test scanner flow behavior without network dependencies
         run: node supabase/security-test/card-flow-smoke.mjs
 
