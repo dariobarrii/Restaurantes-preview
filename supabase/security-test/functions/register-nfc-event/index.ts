@@ -72,17 +72,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "rate_limited" }, globalError ? 503 : 429);
     }
 
-    const clientIp = req.headers.get("x-real-ip")?.trim();
-    if (clientIp) {
-      const clientBucket = await sha256Hex("nq-central-rate-limit-v1:ip:" + clientIp);
-      const { data: clientAllowed, error: clientError } = await supabase.rpc("consume_nfc_event_rate_limit", {
-        p_bucket_key: clientBucket, p_max_requests: 40, p_window_seconds: 60,
-      });
-      if (clientError || clientAllowed !== true) {
-        if (clientError) console.error("Client rate-limit check failed:", clientError.message);
-        return jsonResponse({ ok: false, error: clientError ? "rate_limit_unavailable" : "rate_limited" }, clientError ? 503 : 429);
-      }
-    }
+    // Do not trust caller-controlled IP headers for rate-limit identity. The global ceiling remains active.
 
     const body = await readJsonBodyLimited(req, 2048) as { card_id?: unknown; token?: unknown; device_type?: unknown } | null;
     const cardId = body?.card_id;
