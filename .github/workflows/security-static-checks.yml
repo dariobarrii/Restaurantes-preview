@@ -167,5 +167,15 @@ jobs:
           assert 'readJsonBodyLimited(req, 2048)' in edge, "Test scanner endpoint must cap streamed request size"
           assert 'CREATE TABLE IF NOT EXISTS public.app_business_card_rate_limits' in production_rate_migration, "Production rate-limit table migration missing"
           assert 'GRANT EXECUTE ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) TO service_role' in production_rate_migration, "Rate limiter must be service_role-only"
+          assert 'ALTER TABLE public.app_business_card_rate_limits ENABLE ROW LEVEL SECURITY' in production_rate_migration, "Rate-limit storage must enforce RLS"
+          assert 'ALTER TABLE public.app_business_card_rate_limit_maintenance ENABLE ROW LEVEL SECURITY' in production_rate_migration, "Rate-limit maintenance storage must enforce RLS"
+          assert 'REVOKE ALL ON TABLE public.app_business_card_rate_limits FROM PUBLIC, anon, authenticated' in production_rate_migration, "Rate-limit buckets must not be accessible to clients"
+          assert 'REVOKE ALL ON TABLE public.app_business_card_rate_limit_maintenance FROM PUBLIC, anon, authenticated' in production_rate_migration, "Rate-limit maintenance must not be accessible to clients"
+          assert 'REVOKE ALL ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) FROM anon' in production_rate_migration, "Anonymous clients must not invoke the limiter"
+          assert 'REVOKE ALL ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) FROM authenticated' in production_rate_migration, "Authenticated clients must not invoke the limiter"
+          assert "updated_at < v_now - interval '24 hours'" in production_rate_migration, "Rate-limit cleanup must bound stale bucket retention"
+          assert 'pg_try_advisory_xact_lock' in production_rate_migration, "Rate-limit cleanup must avoid concurrent cleanup contention"
+          assert 'p_max_requests: 600, p_window_seconds: 60' in production_edge, "Production endpoint must enforce a global request ceiling"
+          assert 'p_max_requests: 40, p_window_seconds: 60' in production_edge, "Production endpoint must enforce the per-client ceiling when a client IP is available"
           print("Security invariants passed.")
           PY
