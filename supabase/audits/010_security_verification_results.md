@@ -46,7 +46,7 @@ Using the approved Feral restaurant account in a transaction under the `authenti
 - The admin profile could see all 4 businesses and 102 pre-test events.
 
 ## Remaining before launch
-- Invoke both Edge Function endpoints over HTTP with valid, invalid, revoked, and malformed payloads. The Supabase integration can deploy/read functions but exposes no direct invocation action in this session; SQL RPC behavior was tested independently. The Edge Function deployment succeeded and the active version is confirmed.
+- GitHub Actions passed JavaScript syntax/security invariants and made a real HTTP POST to the deployed `register-business-card-event` endpoint; malformed payload returned HTTP 400 with `invalid_request`. Still invoke the endpoint with valid, wrong, revoked, and rate-limited token payloads. The available Supabase integration has no direct invocation action; SQL RPC behavior was tested independently.
 - Browser-test card creation, token rotation, and a complete QR/NFC scan on desktop and phone. Static code checks passed, but the browser flow has not yet been executed end-to-end. The card scanner no longer loads a third-party JavaScript bundle; it uses native fetch calls, keeps the token in the URL fragment, and removes it from the address bar.
 - Configure Supabase Auth leaked-password protection in project settings; it is currently disabled in Tzura SteakHouse.
 - Add an IP/global abuse throttle or gateway protection before public launch; current rate limit is per card (one accepted event per two seconds per card).
