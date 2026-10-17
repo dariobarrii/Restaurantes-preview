@@ -53,6 +53,7 @@ Using the approved Feral restaurant account in a transaction under the `authenti
 - Configure Supabase Auth leaked-password protection in project settings; it is currently disabled in Tzura SteakHouse.
 - Add an IP/global abuse throttle or gateway protection before public launch; current rate limit is per card (one accepted event per two seconds per card).
 - Run the two-account browser test with a second approved restaurant user before merge/deploy.
+- Dependency-free scanner-flow behavior tests and additional HTTP checks (GET 405, OPTIONS 200, oversized body 413) now pass in GitHub Actions run 24. These are not a substitute for a real browser/NFC test.
 - Keep PR #2 in draft until these checks pass.
 
 No service-role key or raw test token is committed to the repository. No production release or PR merge was performed.
