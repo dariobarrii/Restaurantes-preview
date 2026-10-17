@@ -22,7 +22,7 @@ function detectDeviceType(){const ua=navigator.userAgent||'';if(/iPad|Tablet/i.t
 async function run(){
  const params=new URLSearchParams(location.search);
  const id=params.get('id');
- const token=params.get('token');
+ const token=new URLSearchParams(location.hash.slice(1)).get('token');
  if(!id||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)||!token||!/^[a-f0-9]{64}$/.test(token)){
   fail('El enlace no contiene una credencial válida. Pedí al administrador que genere un nuevo enlace seguro.');return;
  }
