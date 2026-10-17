@@ -124,6 +124,22 @@ jobs:
           test "$STATUS" = "200"
           grep -q '"error":"invalid_card"' /tmp/edge-invalid-token.json
 
+          # Confirm the hosted runtime provides a stable client-IP header and enforces the per-client cap.
+          LIMITED=0
+          for attempt in $(seq 1 45); do
+            STATUS=$(curl --silent --show-error --output /tmp/edge-rate-limit.json --write-out "%{http_code}" \
+              -X POST "$ENDPOINT" \
+              -H "apikey: $KEY" \
+              -H "Authorization: Bearer $KEY" \
+              -H "Content-Type: application/json" \
+              --data '{"card_id":"invalid","token":"invalid","device_type":"mobile"}')
+            if [ "$STATUS" = "429" ]; then
+              LIMITED=1
+              break
+            fi
+          done
+          test "$LIMITED" = "1"
+
       - name: Assert security invariants
         shell: bash
         run: |
