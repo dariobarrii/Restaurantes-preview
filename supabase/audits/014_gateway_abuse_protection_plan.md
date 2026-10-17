@@ -110,3 +110,13 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [ ] Production Supabase Security Advisor currently reports leaked-password protection disabled. This is an Auth project setting outside the available connected actions; enable it through the Supabase Dashboard after reviewing impact on sign-up/password changes. The production project was only inspected, not changed.
 - [ ] Supabase advisors also report informational `rls_enabled_no_policy` findings for several event/maintenance tables. For rate-limit and token tables this can be intentional when access is meant to be service-role-only; each finding must be checked against the application's actual access paths before adding any policy.
 - [ ] The latest Worker media-type tests have been committed to the branch; the connected workflow-run lookup did not return a run for the new commit, so the new tests are not yet claimed as CI-verified.
+
+
+## Same-day continuation (2026-10-17)
+
+- [x] Added gateway checks that reject non-JSON media types (415) before forwarding, while accepting `application/json; charset=utf-8`; added dedicated unit tests.
+- [x] Updated the static security workflow to run on pushes to `security/remove-client-global-legacy-read`, scoped to scanner, Supabase, and workflow paths. This closes the gap where the static workflow previously only ran for pull requests targeting `main` or manual dispatch.
+- [x] Rechecked isolated database function privileges: both `consume_business_card_rate_limit` and `register_business_card_event_with_token` are SECURITY DEFINER with empty search_path; EXECUTE is unavailable to `anon` and `authenticated`, and available to `service_role` only.
+- [x] Checked PR #2 review state: no submitted reviews or inline review threads were returned by GitHub.
+- [ ] The connected workflow-run lookup returns only pull-request-triggered runs and did not confirm CI for the latest push commits. Do not mark the newly added media-type tests or push-trigger change as CI-verified until an actual run is visible.
+- [ ] No connected operation is available to configure Supabase Edge Function secrets or create/deploy Cloudflare Worker/DNS resources. Isolated HTTP negative/positive tests, real limiter verification, physical NFC/QR tests, and production cutover remain blocked on those external controls.
