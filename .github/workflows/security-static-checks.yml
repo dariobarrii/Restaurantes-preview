@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: nq-central-security-static-checks
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -29,6 +33,7 @@ jobs:
         run: |
           deno check supabase/security-test/functions/register-nfc-event/index.ts
           deno check supabase/functions/register-business-card-event/index.ts
+          deno check supabase/security-test/functions/register-business-card-event-e2e/index.ts
 
       - name: Parse inline JavaScript
         shell: bash
