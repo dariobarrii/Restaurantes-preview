@@ -1,7 +1,7 @@
 # Gateway abuse protection plan
 
 Date: 2026-10-17
-Status: design only; not deployed.
+Status: branch implementation and unit tests; not deployed.
 
 ## Objective
 
@@ -57,9 +57,12 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Added an initial Cloudflare Worker gateway implementation at `supabase/gateway/cloudflare-worker.js`. It fails closed when required configuration is absent, limits body size, uses the edge-provided client identity, applies the configured rate-limiter binding, and injects the gateway secret server-side.
 - [x] Added Node test cases at `supabase/gateway/cloudflare-worker.test.mjs` for missing configuration, missing client identity, rate-limit rejection, secret injection, origin allowlist, and body size.
 - [x] Added a gateway-secret check to the branch Edge Function source. Requests without a configured secret or with a missing/mismatched `x-nq-gateway-secret` are rejected with 403 before database access.
-- [ ] Execute the Worker tests in CI and confirm the Cloudflare rate-limiter binding implementation matches the deployed Cloudflare configuration.
+- [x] Execute the Worker tests in CI; the initial gateway suite passed in run 2. The expanded suite added additional failure-path and allowlist tests; latest result must be verified before calling the branch complete.
 - [ ] Configure secrets in the isolated environment and prove that direct-origin requests fail closed while Worker-origin requests succeed.
 - [ ] Do not deploy this branch Edge Function until the Worker, secret values, rate-limit binding, and endpoint are configured together. The production function remains unchanged.
 - [x] Added GitHub Actions workflow `.github/workflows/gateway-tests.yml` to run the Worker unit tests on relevant branch pushes and pull requests.
 - [x] Gateway unit tests passed in GitHub Actions run 2: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39039755958
-- [ ] The test result is unit-level only; production gateway configuration, direct-origin rejection, DNS/custom hostname, and phone-based scan flow remain unverified.
+- [x] Worker now fails closed when `ALLOWED_ORIGINS` is missing and returns a generic 502 if the upstream response cannot be read.
+- [x] Expanded tests cover preflight, unsupported methods, rate-limiter exceptions, declared and actual body size, upstream network errors, and missing origin allowlist.
+- [ ] Confirm CI for the expanded test suite before marking branch checks complete.
+- [ ] Production gateway configuration, direct-origin rejection, DNS/custom hostname, and phone-based scan flow remain unverified.
