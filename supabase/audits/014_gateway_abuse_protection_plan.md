@@ -65,5 +65,5 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Worker now fails closed when `ALLOWED_ORIGINS` is missing and returns a generic 502 if the upstream response cannot be read.
 - [x] Expanded tests cover preflight, unsupported methods, rate-limiter exceptions, declared and actual body size, upstream network errors, and missing origin allowlist.
 - [x] Confirmed expanded gateway test suite passed in CI run 11: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39039906031.
-- [ ] Security static checks run 85 are still in progress; verify final conclusion before marking all branch checks complete.
+- [x] Security static checks run 88 passed: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040100290.
 - [ ] Production gateway configuration, direct-origin rejection, DNS/custom hostname, and phone-based scan flow remain unverified.
