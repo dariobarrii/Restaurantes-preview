@@ -14,7 +14,7 @@
 - Active card metadata remains publicly readable to support scanning; token hashes are private and admin-managed.
 - The legacy event mirror now copies `card_id` and `device_type` into `app_business_events`, preserving per-card analytics.
 - Admin card usage reads from `app_business_events`, not the locked-down `nfc_events` table.
-- Admin card creation/rotation generates a cryptographically random 256-bit token, stores only its SHA-256 hash, and shows the tokenized URL once. Regenerating a link invalidates the previous token.
+- Admin card creation/rotation generates a cryptographically random 256-bit token, stores only its SHA-256 hash, and shows the tokenized URL once. Regenerating a link invalidates the previous token. The bearer token is carried in the URL fragment (not sent to the static host in the HTTP request) and is removed from the browser address bar on load.
 
 ## Database tests performed
 
@@ -44,8 +44,8 @@ Using the approved Feral restaurant account in a transaction under the `authenti
 - The admin profile could see all 4 businesses and 102 pre-test events.
 
 ## Remaining before launch
-- Invoke both Edge Function endpoints over HTTP with valid, invalid, revoked, and malformed payloads. The Supabase tool available in this session can deploy/read functions but does not expose a direct function-invocation action; SQL RPC behavior was tested independently.
-- Test a complete QR/NFC scan in a browser and on a phone, including redirect behavior and token removal from browser address bar.
+- Invoke both Edge Function endpoints over HTTP with valid, invalid, revoked, and malformed payloads. The Supabase integration can deploy/read functions but exposes no direct invocation action in this session; SQL RPC behavior was tested independently. The Edge Function deployment succeeded and the active version is confirmed.
+- Browser-test card creation, token rotation, and a complete QR/NFC scan on desktop and phone. Static code checks passed, but the browser flow has not yet been executed end-to-end.
 - Configure Supabase Auth leaked-password protection in project settings; it is currently disabled in Tzura SteakHouse.
 - Add an IP/global abuse throttle or gateway protection before public launch; current rate limit is per card (one accepted event per two seconds per card).
 - Run the two-account browser test with a second approved restaurant user before merge/deploy.
