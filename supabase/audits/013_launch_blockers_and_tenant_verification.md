@@ -23,11 +23,32 @@ requests executed as PostgreSQL role `authenticated` with each synthetic
 - Tenant A UUID `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`: event 90001 and review 90001 only.
 - Tenant B UUID `bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`: event 90002 and review 90002 only.
 - Unapproved synthetic identity `cccccccc-cccc-4ccc-8ccc-cccccccccccc`: zero events and zero review snapshots visible.
-- `has_table_privilege(authenticated, app_business_card_tokens, SELECT)` was false.
+- In the isolated tenant fixture, `authenticated` could not SELECT `app_business_card_tokens`.
 
 This is a real PostgreSQL RLS check under the authenticated database role, not
 a browser/session test. Browser login isolation still requires a browser test
 with actual approved Auth users. No production memberships or data were changed.
+
+## Latest production security advisor and privilege audit
+
+The Supabase security advisor still reports `auth_leaked_password_protection`
+as disabled. This remains an open dashboard-only launch blocker.
+
+The advisor also reports RLS-enabled/no-policy findings for `public.nfc_events`,
+`public.nfc_stats`, and `public.veta_daily_review_totals`. Read-only inspection
+confirmed that all three tables have RLS enabled, have no policies, and grant
+neither `anon` nor `authenticated` direct SELECT or INSERT privileges. This is
+deny-by-default and should not be “fixed” by adding broad policies. Any future
+access must be justified by a specific feature and a least-privilege design.
+
+The production `public.app_business_card_tokens` policy grants authenticated
+operations only when `private.app_is_admin()` confirms an approved admin.
+The active-card public SELECT policy exposes only active, non-archived cards
+for approved businesses. No privileges, policies, data, or production settings
+were changed during this audit.
+
+Latest automated checks: GitHub Actions run 71 passed, including Chromium
+smoke tests: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39038199423
 
 ## Remaining external / physical launch gates
 
