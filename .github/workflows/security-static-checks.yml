@@ -196,6 +196,7 @@ jobs:
           assert "updated_at < v_now - interval '24 hours'" in production_rate_migration, "Rate-limit cleanup must bound stale bucket retention"
           assert 'pg_try_advisory_xact_lock' in production_rate_migration, "Rate-limit cleanup must avoid concurrent cleanup contention"
           assert 'p_max_requests: 600, p_window_seconds: 60' in production_edge, "Production endpoint must enforce a global request ceiling"
+          assert 'global_rate_limited' in production_edge, "Global rate limit must use a distinct fail-closed error"
           assert 'cf-connecting-ip' not in production_edge and 'x-real-ip' not in production_edge, "Production endpoint must not trust caller-controlled IP headers"
           assert 'cf-connecting-ip' not in edge and 'x-real-ip' not in edge, "Test endpoint must not trust caller-controlled IP headers"
           print("Security invariants passed.")
