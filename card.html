@@ -43,11 +43,11 @@ async function run(){
    cache:'no-store',referrerPolicy:'no-referrer'
   });
   let result;try{result=await response.json()}catch{result=null}
+  // Fail closed: only an explicit successful token validation may redirect.
+  // Rate-limit errors can occur before token validation, so they are never treated as success.
   if(!response.ok||!result||result.ok!==true){
-   if(result?.error!=='rate_limited'){
-    fail(result?.error==='invalid_card'?'Esta credencial fue pausada o no es válida. Pedí un nuevo enlace.':'No pudimos verificar la tarjeta de forma segura. Intentá de nuevo.');
-    return;
-   }
+   fail(result?.error==='invalid_card'?'Esta credencial fue pausada o no es válida. Pedí un nuevo enlace.':result?.error==='rate_limited'||result?.error==='global_rate_limited'?'La tarjeta está temporalmente limitada. Esperá unos segundos e intentá de nuevo.':'No pudimos verificar la tarjeta de forma segura. Intentá de nuevo.');
+   return;
   }
   $('title').textContent='Listo';$('message').textContent='Abriendo el destino…';
   $('target').href=card.target_url;$('manual').hidden=false;
