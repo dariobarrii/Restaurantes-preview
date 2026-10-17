@@ -168,7 +168,7 @@ function renderAdminMonitor(){const ev=adminCache.events,unknown=ev.filter(e=>!e
 let adminCardsCache=[];let adminCardEvents=[];
 function newCardToken(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('')}
 async function hashCardToken(token){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('')}
-async function rotateCardToken(cardId){const token=newCardToken(),token_hash=await hashCardToken(token);const{error}=await supabase.from('app_business_card_tokens').upsert({card_id:cardId,token_hash,active:true,last_event_at:null},{onConflict:'card_id'});if(error)throw error;const url=new URL('card.html',location.href);url.searchParams.set('id',cardId);url.searchParams.set('token',token);return url.toString()}
+async function rotateCardToken(cardId){const token=newCardToken(),token_hash=await hashCardToken(token);const{error}=await supabase.from('app_business_card_tokens').upsert({card_id:cardId,token_hash,active:true,last_event_at:null},{onConflict:'card_id'});if(error)throw error;const url=new URL('card.html',location.href);url.searchParams.set('id',cardId);url.hash='token='+encodeURIComponent(token);return url.toString()}
 function showCardTokenLink(url){window.prompt('Copiá y guardá este enlace seguro. El token no se puede recuperar; si lo perdés, generá otro enlace.',url)}
 
 function cardStatus(text,error=false){const el=$('adminCardsStatus');el.textContent=text;el.className='status show'+(error?' error':'')}
