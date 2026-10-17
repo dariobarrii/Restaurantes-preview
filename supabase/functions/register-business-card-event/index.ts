@@ -47,6 +47,16 @@ async function sha256Hex(value: string): Promise<string> {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Defense in depth: only the trusted gateway may call this public endpoint.
+  // Configure NQ_GATEWAY_SHARED_SECRET in Edge Function secrets before deployment.
+  // The secret must never be included in browser code or logs.
+  const expectedGatewaySecret = Deno.env.get("NQ_GATEWAY_SHARED_SECRET");
+  const suppliedGatewaySecret = req.headers.get("x-nq-gateway-secret");
+  if (!expectedGatewaySecret || !suppliedGatewaySecret || suppliedGatewaySecret !== expectedGatewaySecret) {
+    return jsonResponse({ ok: false, error: "gateway_required" }, 403);
+  }
+
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
 
   const contentLength = Number(req.headers.get("content-length") || "0");
