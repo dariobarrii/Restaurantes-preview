@@ -82,6 +82,16 @@ jobs:
           test "$STATUS" = "400"
           grep -q '"error":"invalid_request"' /tmp/edge-response.json
 
+          STATUS=$(curl --silent --show-error --output /tmp/edge-invalid-token.json --write-out "%{http_code}" \
+            -X POST "https://qcvhxrudzjlgqlhvnkkl.supabase.co/functions/v1/register-business-card-event" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"card_id":"83c4afa6-e364-4686-abae-e2d8f3307085","token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","device_type":"mobile"}')
+          cat /tmp/edge-invalid-token.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/edge-invalid-token.json
+
       - name: Assert security invariants
         shell: bash
         run: |
