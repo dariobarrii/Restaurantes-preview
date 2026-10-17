@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "rate_limited" }, globalError ? 503 : 429);
     }
 
-    const clientIp = req.headers.get("cf-connecting-ip")?.trim();
+    const clientIp = req.headers.get("x-real-ip")?.trim();
     if (clientIp) {
       const clientBucket = await sha256Hex("nq-central-rate-limit-v1:ip:" + clientIp);
       const { data: clientAllowed, error: clientError } = await supabase.rpc("consume_nfc_event_rate_limit", {
