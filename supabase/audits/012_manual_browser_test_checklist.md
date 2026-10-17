@@ -42,5 +42,5 @@ Do not merge PR #2 until this checklist passes. Use only test cards and approved
 - [ ] Physical mobile QR and NFC scans pass on a real phone.
 - [ ] Two-account tenant isolation passes for approved restaurant accounts.
 - [ ] Leaked-password protection enabled in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email.
-- [ ] Confirm caller-supplied `cf-connecting-ip` cannot evade the per-client rate limiter; latest CI adds a spoof-header test against the isolated endpoint.
+- [ ] Implement gateway/WAF-level abuse protection before public launch. The branch handlers do not trust caller-supplied IP headers; their global request ceiling is not per-client protection.
 - [ ] Production migration 015 and matching production Edge Function deployed together only after all preceding gates pass.
