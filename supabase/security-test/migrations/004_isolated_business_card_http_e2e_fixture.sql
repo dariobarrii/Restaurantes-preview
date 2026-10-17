@@ -36,7 +36,7 @@ CREATE POLICY nq_test_active_card_select ON public.app_business_cards FOR SELECT
   )
 );
 INSERT INTO public.app_businesses (id,name,slug,status)
-VALUES ('22222222-2222-4222-8222-222222222222','NQ Central Security Test Restaurant','nq-central-security-test','approved')
+VALUES ('22222222-2222-4222-8222-222222222222','Feral Steakhouse','nq-central-security-test','approved')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, status = EXCLUDED.status;
 INSERT INTO public.app_business_cards (id,business_id,channel,target_url,status,archived_at)
 VALUES
