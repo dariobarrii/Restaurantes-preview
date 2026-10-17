@@ -6,9 +6,11 @@ Do not merge PR #2 until all launch gates pass. Use only test cards and approved
 
 - [x] Branch business-card handler tested over HTTP against the isolated fixture: valid token accepted; wrong and inactive/revoked tokens rejected. This does not mean the production function has been deployed.
 - [x] SQL tenant-isolation test in NQ Central Security Test: two synthetic authenticated identities see only their own business events and review snapshots; neither can SELECT token hashes.
-- [x] Chromium browser smoke test in CI passed on run 70: fragment removal before API call, destination redirect, token rotation/revocation, paused-card behavior, and rate-limit handling. This is a mocked-backend browser test, not a physical-device test.
+- [x] Chromium browser smoke test in CI passed on run 71: fragment removal before API call, destination redirect, token rotation/revocation, paused-card behavior, and rate-limit handling. This is a mocked-backend browser test, not a physical-device test. Run: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39038199423
 - [x] Production event mirror audit: 103 legacy events, 103 mirrors, zero missing mirrors and zero orphan mirrors.
 - [x] Migration 009 discrepancy resolved in branch: the file is now a comment-only no-op because its legacy table/function do not exist in production. It has not been applied to production.
+- [x] Production RLS/privilege audit: `anon` and `authenticated` have no direct SELECT/INSERT privileges on `nfc_events`, `nfc_stats`, or `veta_daily_review_totals`; all three tables have RLS enabled and no policies. This is deny-by-default; do not add policies unless a reviewed feature requires them.
+- [x] Production card-token policy inspected: `app_business_card_tokens` operations for `authenticated` are guarded by `private.app_is_admin()` for approved admins.
 
 ## Manual desktop browser
 
@@ -41,7 +43,7 @@ Do not merge PR #2 until all launch gates pass. Use only test cards and approved
 
 ## External setup / launch gates
 
-- [ ] Enable leaked-password protection in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email. This setting is not exposed by the connected Supabase management tools and must be enabled in the dashboard.
+- [ ] Enable leaked-password protection in Supabase Auth under Authentication → Sign In / Providers → Email (project: Tzura). Direct settings link: https://supabase.com/dashboard/project/qcvhxrudzjlgqlhvnkkl/auth/providers?provider=Email. Latest production security advisor still reports this setting disabled. This setting is not exposed by the connected Supabase management tools and must be enabled in the dashboard.
 - [ ] Implement gateway/WAF-level abuse protection with non-spoofable client identity and protect the origin endpoint. Caller-supplied IP headers must not be trusted. The global request ceiling is not per-client protection; this needs proxy/domain/DNS configuration and secret management.
 - [ ] After all preceding gates pass, apply production migration 015 and deploy the matching production Edge Function together.
 
