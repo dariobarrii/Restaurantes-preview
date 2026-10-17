@@ -11,11 +11,10 @@
 </style>
 </head>
 <body><main class="box"><h1 id="title">Abriendo el enlace…</h1><p id="message">Estamos comprobando la tarjeta.</p><p id="manual" hidden><a id="target" href="#">Continuar al destino</a></p></main>
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+<script>
+'use strict';
 const SUPABASE_URL='https://qcvhxrudzjlgqlhvnkkl.supabase.co';
 const SUPABASE_KEY='sb_publishable_OpfoWwYD2lvC9dVTT_UT8A_Bvz_GKRw';
-const supabase=createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 function fail(message){$('title').textContent='No se pudo abrir la tarjeta';$('message').textContent=message}
 function detectDeviceType(){const ua=navigator.userAgent||'';if(/iPad|Tablet/i.test(ua))return 'tablet';if(/Mobile|Android|iPhone|iPod/i.test(ua))return 'mobile';if(/Windows|Macintosh|Linux|CrOS/i.test(ua))return 'desktop';return 'unknown'}
@@ -26,25 +25,26 @@ async function run(){
  if(!id||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)||!token||!/^[a-f0-9]{64}$/.test(token)){
   fail('El enlace no contiene una credencial válida. Pedí al administrador que genere un nuevo enlace seguro.');return;
  }
- // Remove the bearer token from the visible URL/history before making network requests.
+ // The fragment is not sent to GitHub Pages; remove it from the address bar immediately.
  history.replaceState(null,'',location.pathname+'?id='+encodeURIComponent(id));
  try{
-  const {data:card,error}=await supabase.from('app_business_cards').select('id,business_id,channel,target_url,status,archived_at').eq('id',id).maybeSingle();
-  if(error)throw error;
+  const cardResponse=await fetch(SUPABASE_URL+'/rest/v1/app_business_cards?select=id,business_id,channel,target_url,status,archived_at&id=eq.'+encodeURIComponent(id),{
+   headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+   cache:'no-store',referrerPolicy:'no-referrer'
+  });
+  if(!cardResponse.ok)throw new Error('card_lookup_failed');
+  const cards=await cardResponse.json();
+  const card=Array.isArray(cards)?cards[0]:null;
   if(!card||card.status!=='active'||card.archived_at){fail('Esta tarjeta está pausada, archivada o no existe. Contactá al restaurante.');return;}
   const response=await fetch(SUPABASE_URL+'/functions/v1/register-business-card-event',{
    method:'POST',
    headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
    body:JSON.stringify({card_id:id,token,device_type:detectDeviceType()}),
-   cache:'no-store',
-   referrerPolicy:'no-referrer'
+   cache:'no-store',referrerPolicy:'no-referrer'
   });
-  let result;
-  try{result=await response.json()}catch{result=null}
+  let result;try{result=await response.json()}catch{result=null}
   if(!response.ok||!result||result.ok!==true){
-   if(result?.error==='rate_limited'){
-    // Valid credential/card: telemetry is throttled, but do not block the customer.
-   }else{
+   if(result?.error!=='rate_limited'){
     fail(result?.error==='invalid_card'?'Esta credencial fue pausada o no es válida. Pedí un nuevo enlace.':'No pudimos verificar la tarjeta de forma segura. Intentá de nuevo.');
     return;
    }
