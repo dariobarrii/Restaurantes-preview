@@ -14,9 +14,9 @@ These changes were applied only to Supabase project `NQ Central Security Test` (
 - Old hashed bucket rows are opportunistically deleted after 24 hours using a transaction-scoped advisory lock to avoid concurrent cleanup work on every request.
 
 ## Checks completed
-- Applied migration `add_nfc_event_rate_limits` and cleanup migration `cleanup_old_nfc_rate_limits` to the isolated test project.
+- Applied migration `add_nfc_event_rate_limits` and cleanup migration `cleanup_old_nfc_rate_limits` to the isolated test project. Also applied the exact production migration `015_add_business_card_rate_limits.sql` to the isolated test project to validate its DDL before production rollout.
 - In a rolled-back SQL transaction, the rate-limit function allowed the first two requests with a limit of two and rejected the third. The transaction was rolled back to leave no test bucket behind.
-- Permission checks returned: anon cannot read rate-limit rows; authenticated cannot read rate-limit rows; neither role can execute the limiter function; service_role can execute it.
+- Permission checks returned for both test and production-named rate-limit functions: anon cannot read rate-limit rows; authenticated cannot read rate-limit rows; neither role can execute the limiter function; service_role can execute it.
 - Deployed Edge Function `register-nfc-event` version 3 with JWT verification disabled for token-based access; it checks rate limits before parsing or processing event registration.
 - GitHub Actions run 11 passed syntax/security checks and HTTP smoke tests against the isolated test endpoint.
 
