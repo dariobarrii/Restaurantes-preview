@@ -154,7 +154,7 @@ jobs:
             -H "apikey: $KEY" \
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/json" \
-            --data "{\"card_id\":\"44444444-4444-4444-8444-444444444444\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"qr\"}")
+            --data "{\"card_id\":\"44444444-4444-4444-8444-444444444444\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"mobile\"}")
           cat /tmp/business-card-revoked.json
           test "$STATUS" = "200"
           grep -q '"error":"invalid_card"' /tmp/business-card-revoked.json
