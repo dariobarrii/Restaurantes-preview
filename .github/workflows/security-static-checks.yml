@@ -3,6 +3,14 @@ name: Security static checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches:
+      - "security/remove-client-global-legacy-read"
+    paths:
+      - "index.html"
+      - "card.html"
+      - "supabase/**"
+      - ".github/workflows/security-static-checks.yml"
   workflow_dispatch:
 
 concurrency:
