@@ -25,3 +25,14 @@ These changes were applied only to Supabase project `NQ Central Security Test` (
 - The `cf-connecting-ip` header needs to be confirmed in the hosted Edge Function runtime. The global rate limit is independent of that header; the per-client limit is conditional on its presence.
 - Real browser NFC/QR scans on desktop and phone remain pending.
 - Production configuration for leaked-password protection and production-grade gateway/IP throttling remain launch blockers.
+
+## Status correction — 2026-10-17, latest deployment read
+
+This section supersedes earlier version references in this file.
+
+- The isolated test endpoint `register-nfc-event` is currently deployed as version 5, not version 3.
+- Production `register-business-card-event` remains version 1 and does **not** yet contain the request-body cap or global/per-client rate limiting described for the branch version.
+- Production migration `015_add_business_card_rate_limits.sql` has not been applied to the Tzura project. The same migration was exercised in the isolated test project, where the rate-limit table, maintenance table, and limiter function are present.
+- The CI burst test confirms HTTP 429 behavior for the isolated endpoint. It does not prove that a valid token can be registered through the production business-card endpoint.
+- The per-client header behavior is not yet independently verified against header spoofing. Treat it as conditional throttling, not as a proven trusted identity boundary.
+- No production deployment or data change was made during this verification.
