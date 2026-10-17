@@ -48,5 +48,5 @@ This section supersedes earlier version references in this file.
 ## Rate-limit identity correction — 2026-10-17
 
 - CI HTTP testing found that a caller could vary `cf-connecting-ip` and avoid the previous per-client limiter. The test runtime did not establish a reliable trusted client IP header.
-- Removed per-client rate limiting from both branch Edge Function handlers rather than claim a spoofable control is protective. The global request ceiling remains 600 requests per 60 seconds; the per-card RPC still applies a 2-second cooldown to accepted events. Global limiting does not prevent a concentrated caller from exhausting the shared allowance.
+- Removed per-client rate limiting from both branch Edge Function handlers rather than claim a spoofable control is protective. The global request ceiling remains 600 requests per 60 seconds; the per-card RPC still applies a 2-second cooldown to accepted events. Global limiting does not prevent a concentrated caller from exhausting the shared allowance. GitHub Actions run 59 passed after these changes: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39036342452.
 - The branch code does not use `cf-connecting-ip` or `x-real-ip` as a security identity. Gateway/WAF-level abuse protection remains a launch gate. No production function or migration was changed.
