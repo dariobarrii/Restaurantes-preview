@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
     const rawToken = body?.token;
     const deviceType = body?.device_type ?? "unknown";
     if (typeof cardId !== "string" || !uuidPattern.test(cardId) || !isHexToken(rawToken) ||
-        !["mobile", "desktop", "tablet", "unknown"].includes(deviceType)) {
+        typeof deviceType !== "string" || !["mobile", "desktop", "tablet", "unknown"].includes(deviceType)) {
       return jsonResponse({ ok: false, error: "invalid_request" }, 400);
     }
 
