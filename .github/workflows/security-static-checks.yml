@@ -139,6 +139,7 @@ jobs:
             fi
           done
           test "$LIMITED" = "1"
+          grep -q '"error":"rate_limited"' /tmp/edge-rate-limit.json
 
       - name: Assert security invariants
         shell: bash
