@@ -64,6 +64,15 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Gateway unit tests passed in GitHub Actions run 2: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39039755958
 - [x] Worker now fails closed when `ALLOWED_ORIGINS` is missing and returns a generic 502 if the upstream response cannot be read.
 - [x] Expanded tests cover preflight, unsupported methods, rate-limiter exceptions, declared and actual body size, upstream network errors, and missing origin allowlist.
-- [x] Confirmed expanded gateway test suite passed in CI run 11: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39039906031.
-- [x] Security static checks run 88 passed: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040100290.
+- [x] Confirmed expanded gateway test suite passed in CI run 16: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040237509.
+- [x] Security static checks run 89 passed: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040237592.
 - [ ] Production gateway configuration, direct-origin rejection, DNS/custom hostname, and phone-based scan flow remain unverified.
+
+
+## Latest verification snapshot
+
+- [x] Gateway tests pass in CI run 16: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040237509.
+- [x] Static security checks pass in CI run 89: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39040237592.
+- [x] Added `supabase/gateway/README.md` deployment runbook with isolated validation and production release ordering.
+- [ ] Infrastructure release gates remain open: no configured shared secret, no deployed isolated Worker/hostname, no verified real Cloudflare rate-limiter binding, and no phone/NFC/QR end-to-end proof. The available connected Supabase actions do not expose a safe secret-setting workflow; do not deploy the Edge Function before the secret is set out-of-band.
+- [ ] Production migration 015, Edge Function deployment, DNS cutover, and PR merge remain intentionally blocked until those gates pass.
