@@ -133,3 +133,27 @@ test("fails closed when no origin allowlist is configured", async () => {
   assert.equal(response.status, 403);
   assert.equal((await response.json()).error, "origin_not_allowed");
 });
+
+
+test("rejects non-JSON content types before calling origin", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("origin must not be called"); };
+  try {
+    const response = await worker.fetch(request({ headers: { "content-type": "text/plain" } }), env());
+    assert.equal(response.status, 415);
+    assert.equal((await response.json()).error, "unsupported_media_type");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("accepts JSON with UTF-8 charset", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+  try {
+    const response = await worker.fetch(request({ headers: { "content-type": "application/json; charset=utf-8" } }), env());
+    assert.equal(response.status, 200);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
