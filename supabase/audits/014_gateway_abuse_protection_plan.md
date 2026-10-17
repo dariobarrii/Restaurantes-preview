@@ -100,3 +100,13 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Security static checks passed in run 92: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39042122829.
 - [ ] The remaining work is external runtime setup and end-to-end validation, not a known failing CI check: configure a unique shared secret in isolated Supabase and Cloudflare, provision the Worker rate-limiting binding/hostname, verify HTTP direct-origin rejection and successful gateway event, then test NFC/QR on devices.
 - [ ] Keep production migration 015, production function deployment, DNS/frontend cutover, and PR merge on hold until the isolated request path is verified. No production changes were made as part of this follow-up.
+
+
+## Additional hardening and environment review (2026-10-17)
+
+- [x] Worker now rejects requests whose media type is not `application/json` (415) before forwarding them upstream; JSON with a UTF-8 charset remains accepted. Added two unit tests for both cases.
+- [x] Read-only verification in the isolated test project confirms `consume_business_card_rate_limit(text,integer,integer)` is `SECURITY DEFINER`, has an empty `search_path`, and EXECUTE is denied to `anon` and `authenticated` while allowed to `service_role`.
+- [x] Read-only privilege check confirms the isolated rate-limit tables have RLS enabled and no direct SELECT/INSERT grants for `anon` or `authenticated`; service-role access remains available for the server-side RPC.
+- [ ] Production Supabase Security Advisor currently reports leaked-password protection disabled. This is an Auth project setting outside the available connected actions; enable it through the Supabase Dashboard after reviewing impact on sign-up/password changes. The production project was only inspected, not changed.
+- [ ] Supabase advisors also report informational `rls_enabled_no_policy` findings for several event/maintenance tables. For rate-limit and token tables this can be intentional when access is meant to be service-role-only; each finding must be checked against the application's actual access paths before adding any policy.
+- [ ] The latest Worker media-type tests have been committed to the branch; the connected workflow-run lookup did not return a run for the new commit, so the new tests are not yet claimed as CI-verified.
