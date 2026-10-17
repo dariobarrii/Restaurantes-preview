@@ -74,8 +74,8 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "rate_limited" }, globalError ? 503 : 429);
     }
 
-    // Cloudflare's connecting-IP header is used only if present; raw IP is never stored.
-    const clientIp = req.headers.get("cf-connecting-ip")?.trim();
+    // Gateway-provided x-real-ip is used only if present; raw IP is never stored.
+    const clientIp = req.headers.get("x-real-ip")?.trim();
     if (clientIp) {
       const clientBucket = await sha256Hex("nq-central-rate-limit-v1:business-card:ip:" + clientIp);
       const { data: clientAllowed, error: clientError } = await supabase.rpc("consume_business_card_rate_limit", {
