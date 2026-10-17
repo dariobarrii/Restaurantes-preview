@@ -14,6 +14,7 @@
 - Moved `app_is_admin()` and `app_is_approved_member(uuid)` into the non-public `private` schema, retained only the permissions required for RLS evaluation, and updated the profile-protection trigger. The two SECURITY DEFINER RPC warnings disappeared from Supabase Security Advisor.
 - Active card metadata remains publicly readable to support scanning; token hashes are private and admin-managed.
 - The legacy event mirror now copies `card_id` and `device_type` into `app_business_events`, preserving per-card analytics.
+- Public catalog policies expose only approved businesses and active, unarchived cards belonging to approved businesses. Anonymous and already-signed-in scanner reads were verified.
 - Admin card usage reads from `app_business_events`, not the locked-down `nfc_events` table.
 - Admin card creation/rotation generates a cryptographically random 256-bit token, stores only its SHA-256 hash, and shows the tokenized URL once. Regenerating a link invalidates the previous token. The bearer token is carried in the URL fragment (not sent to the static host in the HTTP request) and is removed from the browser address bar on load.
 
