@@ -118,7 +118,7 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 - [x] Updated the static security workflow to run on pushes to `security/remove-client-global-legacy-read`, scoped to scanner, Supabase, and workflow paths. This closes the gap where the static workflow previously only ran for pull requests targeting `main` or manual dispatch.
 - [x] Rechecked isolated database function privileges: both `consume_business_card_rate_limit` and `register_business_card_event_with_token` are SECURITY DEFINER with empty search_path; EXECUTE is unavailable to `anon` and `authenticated`, and available to `service_role` only.
 - [x] Checked PR #2 review state: no submitted reviews or inline review threads were returned by GitHub.
-- [ ] The connected workflow-run lookup returns only pull-request-triggered runs and did not confirm CI for the latest push commits. Do not mark the newly added media-type tests or push-trigger change as CI-verified until an actual run is visible.
+- [x] Latest commit `47ceb92f478b4d5d1aaa69a3191f4da65235417f` is verified by both pull-request CI runs: Gateway tests run 30 passed (https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39042887576) and Security static checks run 103 passed (https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39042887375). This verifies the media-type tests and static workflow changes on the latest commit.
 - [ ] No connected operation is available to configure Supabase Edge Function secrets or create/deploy Cloudflare Worker/DNS resources. Isolated HTTP negative/positive tests, real limiter verification, physical NFC/QR tests, and production cutover remain blocked on those external controls.
 
 
@@ -126,3 +126,9 @@ This document is a plan only. It does not create DNS records, buy a domain or pl
 
 - [x] Executed a transactional assertion block against the isolated test project's `consume_business_card_rate_limit` RPC using a dedicated synthetic bucket. The function allowed requests 1 and 2 with a limit of 2, rejected request 3, and rejected malformed bucket keys, a zero request limit, and a window above the configured maximum. The assertion block completed without exception.
 - [ ] This verifies database RPC behavior only. It does not validate the deployed Edge Function's HTTP secret gate, Cloudflare binding behavior, or the full event-registration path.
+
+
+## CI status correction (2026-10-17)
+
+- [x] Queried the repository's Actions run list directly; both workflows passed on latest branch commit `47ceb92f478b4d5d1aaa69a3191f4da65235417f` (gateway run 30 and static checks run 103). The earlier note about inability to confirm latest CI is superseded.
+- [ ] Runtime release blockers remain unchanged: shared secret configuration, deployed isolated Worker and real rate-limiter binding, HTTP direct-origin rejection and valid gateway event, and physical NFC/QR validation. Production remains untouched.
