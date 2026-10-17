@@ -107,7 +107,8 @@ jobs:
           assert 'Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")' in edge, "Edge Function must read service role only from server environment"
           assert "sb_secret_" not in index and "sb_secret_" not in card and "sb_secret_" not in edge and "sb_secret_" not in production_edge, "Secret-format key found in source"
           assert 'consume_business_card_rate_limit' in production_edge, "Production scanner endpoint must enforce database rate limits"
-          assert 'contentLength > 2048' in production_edge, "Production scanner endpoint must cap request size"
+          assert 'readJsonBodyLimited(req, 2048)' in production_edge, "Production scanner endpoint must cap streamed request size"
+          assert 'readJsonBodyLimited(req, 2048)' in edge, "Test scanner endpoint must cap streamed request size"
           assert 'CREATE TABLE IF NOT EXISTS public.app_business_card_rate_limits' in production_rate_migration, "Production rate-limit table migration missing"
           assert 'GRANT EXECUTE ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) TO service_role' in production_rate_migration, "Rate limiter must be service_role-only"
           print("Security invariants passed.")
