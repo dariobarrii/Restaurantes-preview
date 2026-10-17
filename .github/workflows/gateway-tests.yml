@@ -1,0 +1,30 @@
+name: Gateway tests
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "supabase/gateway/**"
+      - ".github/workflows/gateway-tests.yml"
+  push:
+    branches:
+      - "security/remove-client-global-legacy-read"
+    paths:
+      - "supabase/gateway/**"
+      - ".github/workflows/gateway-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gateway-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run gateway tests
+        run: node --test supabase/gateway/cloudflare-worker.test.mjs
