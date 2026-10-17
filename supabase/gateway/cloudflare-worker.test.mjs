@@ -7,6 +7,7 @@ function env(overrides = {}) {
     SUPABASE_FUNCTION_URL: "https://example.invalid/functions/v1/register-business-card-event",
     GATEWAY_SHARED_SECRET: "test-secret-only",
     RATE_LIMITER: { limit: async () => ({ success: true }) },
+    ALLOWED_ORIGINS: "https://app.example",
     ...overrides,
   };
 }
@@ -14,7 +15,7 @@ function env(overrides = {}) {
 function request({ method = "POST", headers = {}, body = '{"card_id":"x"}' } = {}) {
   return new Request("https://gateway.example.test/events", {
     method,
-    headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.10", ...headers },
+    headers: { "content-type": "application/json", origin: "https://app.example", "CF-Connecting-IP": "203.0.113.10", ...headers },
     body: method === "POST" ? body : undefined,
   });
 }
@@ -118,9 +119,17 @@ test("normalizes upstream network errors without exposing details", async () => 
   try {
     const response = await worker.fetch(request(), env());
     assert.equal(response.status, 502);
-    assert.equal((await response.json()).error, "upstream_unavailable");
-    assert.doesNotMatch(await response.text().catch(() => ""), /secret upstream detail/);
+    const body = await response.text();
+    assert.match(body, /upstream_unavailable/);
+    assert.doesNotMatch(body, /secret upstream detail/);
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+
+test("fails closed when no origin allowlist is configured", async () => {
+  const response = await worker.fetch(request(), env({ ALLOWED_ORIGINS: "" }));
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "origin_not_allowed");
 });
