@@ -1,0 +1,54 @@
+# Gateway abuse protection plan
+
+Date: 2026-10-17
+Status: design only; not deployed.
+
+## Objective
+
+Add per-client abuse protection to the public business-card scan flow without trusting caller-supplied IP headers and without exposing a gateway credential in browser code.
+
+## Proposed request path
+
+Phone / QR / NFC -> custom hostname on Cloudflare Worker -> Supabase Edge Function -> existing server-side token validation RPC.
+
+The Worker obtains client identity from the platform-provided `CF-Connecting-IP` value, which is trustworthy only on requests actually received by Cloudflare. It must not accept a caller-provided substitute header. Apply a per-IP rate limit at the Worker/WAF layer and retain the database global ceiling as defense in depth.
+
+## Origin protection (mandatory)
+
+The Supabase Edge Function remains reachable at its native URL, so merely putting a Worker in front of it is not sufficient. Before cutover, add a server-side gateway-secret check to the Edge Function:
+- Store a high-entropy secret in Supabase Edge Function secrets and as a Cloudflare Worker secret.
+- The Worker forwards the secret in a dedicated header; browser code must never know or send it.
+- The Edge Function rejects missing/incorrect secrets before parsing the body or consuming the database rate-limit bucket.
+- The Worker must strip any incoming client header with the same name and set its own value.
+- Rotate the secret if it is ever exposed; never put it in Git, HTML, client JavaScript, screenshots, or logs.
+- Keep the native Supabase URL private from normal app navigation where practical, but do not treat obscurity as protection.
+
+## Rate-limit design
+
+- Use the trusted client IP only at the Cloudflare edge. Do not trust `X-Forwarded-For`, `X-Real-IP`, or `CF-Connecting-IP` values supplied directly to Supabase.
+- Configure a per-IP threshold appropriate for legitimate shared restaurant Wi-Fi and mobile carrier NAT; monitor false positives before tightening.
+- Preserve the database global ceiling as a fallback, not as the per-client control.
+- Return generic 429 responses with `Cache-Control: no-store`; do not log raw bearer tokens or gateway secrets.
+- If the chosen Cloudflare rate-limiting feature requires a paid plan, confirm pricing before enabling it. Do not purchase or change plans automatically.
+
+## Cutover requirements
+
+1. Add a gateway-secret gate to the branch Edge Function and unit/integration tests proving requests without the secret fail closed.
+2. Implement the Worker as a separate deployable artifact, with tests for missing client identity, rate-limit rejection, request-size limit, CORS/preflight, and upstream errors.
+3. Add configuration documentation for the custom hostname, DNS, Worker secret, Supabase secret, and edge rate-limit rule. No secret values belong in the repository.
+4. Deploy to a non-production hostname and isolated Supabase project first.
+5. Test both the Worker hostname and direct Supabase function URL. The direct URL must fail closed without the gateway secret.
+6. Verify valid scan links, revoked/paused tokens, destination redirects, and event counts on real phone/QR/NFC.
+7. Only after all gates pass, coordinate production secret setup, function deployment, DNS cutover, and migration 015. Never enable a half-configured cutover.
+
+## Dependencies / blockers
+
+- A Cloudflare account with permission to create Workers and configure DNS/custom hostnames.
+- A domain the project owner controls and can point to Cloudflare.
+- Secure secret configuration in both Cloudflare and Supabase.
+- Isolated environment to validate the complete request path.
+- Real phone and NFC/QR tags for final physical verification.
+
+## Safety notes
+
+This document is a plan only. It does not create DNS records, buy a domain or plan, add secrets, deploy a Worker, deploy an Edge Function, or change production data/settings. The existing production function must not be considered gateway-protected until the direct-origin negative test passes.
