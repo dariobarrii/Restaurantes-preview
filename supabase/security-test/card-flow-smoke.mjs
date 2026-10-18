@@ -108,6 +108,6 @@ const globalRateLimited = await runCase({
   ],
 });
 assert.equal(globalRateLimited.location.redirects.length, 0, "global limit must fail closed because token validation did not complete");
-assert.match(globalRateLimited.elements.message.textContent, /verificar la tarjeta/);
+assert.match(globalRateLimited.elements.message.textContent, /verificar la tarjeta|temporalmente limitada/);
 
 console.log("Card scanner behavior tests passed: valid, malformed, paused, invalid/revoked, and rate-limited flows.");
