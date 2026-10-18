@@ -1,7 +1,14 @@
 # NQ Central — launch readiness checklist
 
-Date: 2026-10-17  
+Date: 2026-10-18  
 Status: planning / pre-launch. This checklist does not authorize production changes.
+
+## Current status snapshot (2026-10-18)
+- [x] Security static checks passed on commit `d5c48d4`: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39158450735
+- [x] Gateway unit tests passed on commit `d5c48d4`: https://github.com/dariobarrii/Restaurantes-preview/actions/runs/39158450680
+- [x] Chromium scanner smoke tests and scanner-flow checks passed as part of the successful static-check run above.
+- [x] PR #2 remains open and draft; no production deployment or merge performed.
+- [ ] Isolated gateway configuration, direct-origin HTTP rejection, real browser Auth sessions, and physical QR/NFC tests remain pending.
 
 ## Non-negotiable constraints
 - [ ] No production migration, Edge Function deployment, Auth setting change, token rotation, DNS cutover, or PR merge before all required gates pass and the owner explicitly authorizes the production release.
@@ -10,7 +17,7 @@ Status: planning / pre-launch. This checklist does not authorize production chan
 - [ ] Never put secrets in Git, HTML, browser JavaScript, URLs, screenshots, or logs.
 
 ## Gate 1 — repository and CI
-- [x] Gateway unit tests and static security checks passed in the latest recorded CI runs on 2026-10-17.
+- [x] Gateway unit tests and static security checks passed on commit `d5c48d4` on 2026-10-18 (runs 39158450680 and 39158450735).
 - [ ] Re-check CI on the final candidate commit before any release.
 - [ ] Review all outstanding PR conversations and code changes.
 - [ ] Keep PR #2 in draft until all external and end-to-end gates pass.
