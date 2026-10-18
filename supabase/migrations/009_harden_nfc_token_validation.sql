@@ -1,0 +1,11 @@
+-- RETIRED LEGACY MIGRATION — INTENTIONALLY NO-OP.
+--
+-- This historical patch targeted public.nfc_card_tokens and
+-- public.register_nfc_event_with_token. Read-only inspection of the current
+-- production project confirms neither object exists; the live registration
+-- path is public.register_business_card_event_with_token, introduced by
+-- migration 010 and backed by app_business_card_tokens.
+--
+-- Do not recreate or apply the old function to production. Keeping this file
+-- as a no-op preserves the numbered migration history without attempting to
+-- modify a schema that is no longer part of NQ Central.

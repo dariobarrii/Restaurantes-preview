@@ -9,7 +9,7 @@ create or replace function public.mirror_legacy_nfc_event_to_business()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public
 as $$
 declare
   target_slug text;

@@ -1,0 +1,223 @@
+name: Security static checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - "security/remove-client-global-legacy-read"
+    paths:
+      - "index.html"
+      - "card.html"
+      - "supabase/**"
+      - ".github/workflows/security-static-checks.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: nq-central-security-static-checks
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Edge Functions
+        run: |
+          deno check supabase/security-test/functions/register-nfc-event/index.ts
+          deno check supabase/functions/register-business-card-event/index.ts
+          deno check supabase/security-test/functions/register-business-card-event-e2e/index.ts
+
+      - name: Parse inline JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.current = None
+                  self.items = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script":
+                      attrs = dict(attrs)
+                      if "src" not in attrs:
+                          self.current = {"type": attrs.get("type", ""), "body": []}
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current["body"].append(data)
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.current is not None:
+                      self.items.append(self.current)
+                      self.current = None
+
+          for filename in ("index.html", "card.html"):
+              parser = Scripts()
+              parser.feed(Path(filename).read_text(encoding="utf-8"))
+              for i, item in enumerate(parser.items):
+                  suffix = ".mjs" if item["type"] == "module" else ".js"
+                  with tempfile.NamedTemporaryFile("w", suffix=suffix, encoding="utf-8") as f:
+                      f.write("".join(item["body"]))
+                      f.flush()
+                      subprocess.run(["node", "--check", f.name], check=True)
+              print(f"{filename}: checked {len(parser.items)} inline script(s)")
+          PY
+
+      - name: Run real-browser scanner smoke tests
+        shell: bash
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+          node supabase/security-test/card-browser-smoke.mjs
+
+      - name: Test scanner flow behavior without network dependencies
+        run: node supabase/security-test/card-flow-smoke.mjs
+
+      - name: Smoke-test deployed Edge Function input validation
+        shell: bash
+        run: |
+          # Keep CI smoke tests isolated to NQ Central Security Test; never hit the live restaurant project.
+          KEY='sb_publishable_pf86bqfSq1qq1HwQ0ECFjw_fz_DPzLw'
+          ENDPOINT='https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-nfc-event'
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-method.json --write-out "%{http_code}" \
+            -X GET "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+          test "$STATUS" = "405"
+          grep -q '"error":"method_not_allowed"' /tmp/edge-method.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-options.txt --write-out "%{http_code}" \
+            -X OPTIONS "$ENDPOINT" \
+            -H "Origin: https://example.com" \
+            -H "Access-Control-Request-Method: POST")
+          test "$STATUS" = "200"
+          python3 - <<'PY'
+          from pathlib import Path
+          Path("/tmp/oversized-body.txt").write_text("x" * 3000, encoding="utf-8")
+          PY
+          STATUS=$(curl --silent --show-error --output /tmp/edge-oversized.json --write-out "%{http_code}" \
+            -X POST "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/oversized-body.txt)
+          test "$STATUS" = "413"
+          grep -q '"error":"request_too_large"' /tmp/edge-oversized.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-response.json --write-out "%{http_code}" \
+            -X POST "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"card_id":"invalid","token":"invalid","device_type":"mobile"}')
+          cat /tmp/edge-response.json
+          test "$STATUS" = "400"
+          grep -q '"error":"invalid_request"' /tmp/edge-response.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/edge-invalid-token.json --write-out "%{http_code}" \
+            -X POST "$ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"card_id":"11111111-1111-4111-8111-111111111111","token":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","device_type":"mobile"}')
+          cat /tmp/edge-invalid-token.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/edge-invalid-token.json
+
+          # Exercise the business-card endpoint against its isolated test fixture (never production).
+          BUSINESS_CARD_ENDPOINT='https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-business-card-event-e2e'
+          VALID_TOKEN=$(printf '%s' 'NQ Central isolated HTTP E2E test token v1' | sha256sum | cut -d' ' -f1)
+          REVOKED_TOKEN=$(printf '%s' 'NQ Central isolated HTTP E2E revoked token v1' | sha256sum | cut -d' ' -f1)
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-valid.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"33333333-3333-4333-8333-333333333333\",\"token\":\"$VALID_TOKEN\",\"device_type\":\"mobile\"}")
+          cat /tmp/business-card-valid.json
+          test "$STATUS" = "200"
+          grep -q '"ok":true' /tmp/business-card-valid.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-wrong-token.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"33333333-3333-4333-8333-333333333333\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"mobile\"}")
+          cat /tmp/business-card-wrong-token.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/business-card-wrong-token.json
+
+          STATUS=$(curl --silent --show-error --output /tmp/business-card-revoked.json --write-out "%{http_code}" \
+            -X POST "$BUSINESS_CARD_ENDPOINT" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            --data "{\"card_id\":\"44444444-4444-4444-8444-444444444444\",\"token\":\"$REVOKED_TOKEN\",\"device_type\":\"mobile\"}")
+          cat /tmp/business-card-revoked.json
+          test "$STATUS" = "200"
+          grep -q '"error":"invalid_card"' /tmp/business-card-revoked.json
+
+          # Global request ceiling is verified statically; per-client limits require a trusted gateway identity.
+
+      - name: Assert security invariants
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path("index.html").read_text(encoding="utf-8")
+          card = Path("card.html").read_text(encoding="utf-8")
+          edge = Path("supabase/security-test/functions/register-nfc-event/index.ts").read_text(encoding="utf-8")
+          production_edge = Path("supabase/functions/register-business-card-event/index.ts").read_text(encoding="utf-8")
+          production_rate_migration = Path("supabase/migrations/015_add_business_card_rate_limits.sql").read_text(encoding="utf-8")
+
+          assert "from('nfc_events')" not in index, "Admin/client HTML must not directly query or write legacy nfc_events"
+          assert "SUPABASE_SERVICE_ROLE_KEY" not in index and "SUPABASE_SERVICE_ROLE_KEY" not in card, "Service role env name leaked into public HTML"
+          assert "new URLSearchParams(location.hash.slice(1)).get('token')" in card, "Scanner must read bearer token from URL fragment"
+          assert "history.replaceState" in card, "Scanner must remove token from address bar"
+          assert "/functions/v1/register-business-card-event" in card, "Scanner must call secure event endpoint"
+          assert "from('nfc_events').insert" not in card, "Scanner must not write legacy events directly"
+          assert "crypto.subtle.digest" in edge, "Edge Function must hash raw token server-side"
+          assert 'Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")' in edge, "Edge Function must read service role only from server environment"
+          assert "sb_secret_" not in index and "sb_secret_" not in card and "sb_secret_" not in edge and "sb_secret_" not in production_edge, "Secret-format key found in source"
+          assert 'consume_business_card_rate_limit' in production_edge, "Production scanner endpoint must enforce database rate limits"
+          assert 'readJsonBodyLimited(req, 2048)' in production_edge, "Production scanner endpoint must cap streamed request size"
+          assert 'readJsonBodyLimited(req, 2048)' in edge, "Test scanner endpoint must cap streamed request size"
+          assert 'CREATE TABLE IF NOT EXISTS public.app_business_card_rate_limits' in production_rate_migration, "Production rate-limit table migration missing"
+          assert 'GRANT EXECUTE ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) TO service_role' in production_rate_migration, "Rate limiter must be service_role-only"
+          assert 'ALTER TABLE public.app_business_card_rate_limits ENABLE ROW LEVEL SECURITY' in production_rate_migration, "Rate-limit storage must enforce RLS"
+          assert 'ALTER TABLE public.app_business_card_rate_limit_maintenance ENABLE ROW LEVEL SECURITY' in production_rate_migration, "Rate-limit maintenance storage must enforce RLS"
+          assert 'REVOKE ALL ON TABLE public.app_business_card_rate_limits FROM PUBLIC, anon, authenticated' in production_rate_migration, "Rate-limit buckets must not be accessible to clients"
+          assert 'REVOKE ALL ON TABLE public.app_business_card_rate_limit_maintenance FROM PUBLIC, anon, authenticated' in production_rate_migration, "Rate-limit maintenance must not be accessible to clients"
+          assert 'REVOKE ALL ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) FROM anon' in production_rate_migration, "Anonymous clients must not invoke the limiter"
+          assert 'REVOKE ALL ON FUNCTION public.consume_business_card_rate_limit(text, integer, integer) FROM authenticated' in production_rate_migration, "Authenticated clients must not invoke the limiter"
+          assert "updated_at < v_now - interval '24 hours'" in production_rate_migration, "Rate-limit cleanup must bound stale bucket retention"
+          assert 'pg_try_advisory_xact_lock' in production_rate_migration, "Rate-limit cleanup must avoid concurrent cleanup contention"
+          assert 'p_max_requests: 600, p_window_seconds: 60' in production_edge, "Production endpoint must enforce a global request ceiling"
+          assert 'global_rate_limited' in production_edge, "Global rate limit must use a distinct fail-closed error"
+          assert 'cf-connecting-ip' not in production_edge and 'x-real-ip' not in production_edge, "Production endpoint must not trust caller-controlled IP headers"
+          assert 'cf-connecting-ip' not in edge and 'x-real-ip' not in edge, "Test endpoint must not trust caller-controlled IP headers"
+          print("Security invariants passed.")
+          PY
