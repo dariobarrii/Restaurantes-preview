@@ -98,7 +98,8 @@ const rateLimited = await runCase({
     { ok: false, status: 429, body: { ok: false, error: "rate_limited" } },
   ],
 });
-assert.deepEqual(rateLimited.location.redirects, [TARGET], "rate limiting should not prevent a valid card from opening its destination");
+assert.equal(rateLimited.location.redirects.length, 0, "rate-limited response must fail closed until token validation succeeds");
+assert.match(rateLimited.elements.message.textContent, /temporalmente limitada|verificar la tarjeta/);
 
 const globalRateLimited = await runCase({
   responses: [
