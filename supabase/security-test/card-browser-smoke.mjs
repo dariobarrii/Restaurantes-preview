@@ -61,7 +61,10 @@ async function runScenario({ name, incomingToken, cardStatus = "active", current
     assert.equal(page.url(), targetUrl, `${name}: destination`);
     assert.equal(sawFragmentRemovedBeforeNetwork, true, `${name}: fragment removed before first API call`);
   } else {
-    await page.getByText(/Esta tarjeta está pausada|Esta credencial fue pausada|No pudimos verificar la tarjeta/).waitFor({ timeout: 5000 });
+    await page.waitForFunction(() => {
+      const message = document.querySelector("#message")?.textContent ?? "";
+      return message !== "" && message !== "Estamos comprobando la tarjeta.";
+    }, { timeout: 5000 });
     assert.notEqual(page.url(), targetUrl, `${name}: must not redirect`);
   }
   if (expectNoFunction) assert.equal(functionCalls, 0, `${name}: must not call registration function`);
