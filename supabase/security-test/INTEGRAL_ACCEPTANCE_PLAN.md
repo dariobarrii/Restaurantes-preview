@@ -39,4 +39,4 @@ Estas operaciones NO están autorizadas por esta jornada: aplicar migraciones en
 
 Por caso: SHA, proyecto, identidad/rol de prueba sin credenciales, solicitud redactada, HTTP, conteos/estado final y restauración. Estados independientes: aprobado, fallido, pendiente. Aislamiento comercial y NFC/QR integral permanecen pendientes hasta obtener esta evidencia real.
 
-Los scripts antiguos card-flow-smoke.mjs/card-browser-smoke.mjs no son evidencia del gateway actual: no ejecutarlos contra un destino remoto sin revisar sus rutas y bloquear toda red no autorizada. La suite nueva card-flow-local.test.mjs ejecuta el script actual sin red real.
+card-flow-smoke.mjs sigue siendo un harness antiguo y no prueba el gateway actual. card-browser-smoke.mjs fue reemplazado por un harness offline del scanner/Worker/Edge actuales, con cliente SQL sustituido y todas las peticiones interceptadas. Ver BROWSER_LOCAL_TESTS.md. Ninguno demuestra RPC/RLS desplegado.
