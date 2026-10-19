@@ -3,11 +3,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql] = await Promise.all([
+const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
   readFile("supabase/functions/manage-business-card-token/index.ts","utf8"),
+  readFile("supabase/functions/manage-business-administration/index.ts","utf8"),
+  readFile("supabase/migrations/020_add_nullable_dashboard_fields.sql","utf8"),
+  readFile("supabase/migrations/021_restrict_dashboard_mutations.sql","utf8"),
   readFile("supabase/migrations/016_secure_multi_business_card_events.sql","utf8"),
   readFile("supabase/migrations/018_generalize_legacy_event_mirror.sql","utf8"),
   readFile("supabase/migrations/017_import_legacy_events_idempotently.sql","utf8"),
@@ -120,4 +123,48 @@ test("staging diagnostics are read-only and compare history by tenant/channel", 
   assert.match(reconciliationSql,/FULL JOIN imported/);
   assert.match(reconciliationSql,/imported_attribution_channel_or_date_mismatches/);
   assert.match(reconciliationSql,/duplicate_legacy_event_id_groups/);
+});
+
+test("nullable schema fields and panel fallbacks preserve unknown legacy values", () => {
+  assert.match(schemaMigration,/ADD COLUMN IF NOT EXISTS category text/i);
+  assert.match(schemaMigration,/ADD COLUMN IF NOT EXISTS label text/i);
+  assert.doesNotMatch(schemaMigration,/UPDATE public\\.(app_businesses|app_business_cards)/i);
+  assert.doesNotMatch(schemaMigration,/category[^;]*DEFAULT|label[^;]*DEFAULT/i);
+  assert.doesNotMatch(schemaMigration,/created_at/i);
+  assert.match(index,/categoryNames\\[x\\.category\\]\\|\\|x\\.category\\|\\|'Sin categoría'/);
+  assert.match(index,/x\\.label\\|\\|'Tarjeta sin nombre'/);
+  assert.doesNotMatch(index,/app_business_cards['"]\\)\\.select\\([^)]*created_at/);
+});
+
+test("dashboard mutations are server-authorized and client roles cannot promote themselves", () => {
+  assert.match(index,/functions\\.invoke\\(['"]manage-business-administration/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_businesses['"]\\)\\.insert/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_businesses['"]\\)\\.update/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_business_cards['"]\\)\\.insert/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_business_cards['"]\\)\\.update/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_business_members['"]\\)\\.upsert/);
+  assert.doesNotMatch(index,/\\.from\\(['"]app_profiles['"]\\)\\.update\\(\\{status/);
+  assert.match(adminFunction,/auth\\.getUser\\(bearer\\)/);
+  assert.match(adminFunction,/profile\\?\\.role !== ["']admin["']/);
+  assert.match(adminFunction,/profile\\?\\.status !== ["']approved["']/);
+  assert.match(adminFunction,/input\\.user_id === authData\\.user\\.id/);
+  assert.doesNotMatch(adminFunction,/update\\(\\{\\s*role:/);
+  assert.match(adminFunction,/member_upsert/);
+  assert.match(adminFunction,/business_id: input\\.business_id/);
+});
+
+test("dashboard permissions revoke direct writes only alongside replacement operations", () => {
+  assert.match(dashboardMigration,/REVOKE ALL PRIVILEGES ON TABLE public\\.app_businesses FROM PUBLIC, anon, authenticated/i);
+  assert.match(dashboardMigration,/REVOKE MAINTAIN ON TABLE public\\.app_businesses FROM PUBLIC, anon, authenticated/i);
+  assert.match(dashboardMigration,/REVOKE ALL PRIVILEGES ON TABLE public\\.app_business_cards FROM PUBLIC, anon, authenticated/i);
+  assert.match(dashboardMigration,/GRANT UPDATE \\(full_name\\) ON TABLE public\\.app_profiles TO authenticated/i);
+  assert.match(dashboardMigration,/nq_central_profile_name_self_update/);
+  assert.match(dashboardMigration,/nq_central_member_review_insert/);
+  assert.match(dashboardMigration,/p\\.status='approved'/);
+  assert.match(dashboardMigration,/b\\.status='approved'/);
+  assert.match(dashboardMigration,/has_column_privilege/);
+  assert.match(adminFunction,/business_create/);
+  assert.match(adminFunction,/card_create/);
+  assert.match(adminFunction,/profile_status/);
+  assert.match(adminFunction,/member_upsert/);
 });
