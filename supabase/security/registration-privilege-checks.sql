@@ -57,6 +57,38 @@ SELECT n.nspname AS schema_name,
 FROM pg_catalog.pg_namespace n
 WHERE n.nspname='private';
 
+-- Effective table access of SECURITY DEFINER owners, separately from client/service_role ACLs.
+SELECT n.nspname AS function_schema,
+       p.oid::regprocedure::text AS function_identity,
+       pg_catalog.pg_get_userbyid(p.proowner) AS function_owner,
+       c.relname AS table_name,
+       c.relrowsecurity AS rls_enabled,
+       c.relforcerowsecurity AS rls_forced,
+       pg_catalog.has_table_privilege(p.proowner,c.oid,'SELECT') AS owner_select,
+       pg_catalog.has_table_privilege(p.proowner,c.oid,'INSERT') AS owner_insert,
+       pg_catalog.has_table_privilege(p.proowner,c.oid,'UPDATE') AS owner_update,
+       pg_catalog.has_table_privilege(p.proowner,c.oid,'DELETE') AS owner_delete
+FROM pg_catalog.pg_proc p
+JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+CROSS JOIN pg_catalog.pg_class c
+JOIN pg_catalog.pg_namespace tn ON tn.oid=c.relnamespace
+WHERE n.nspname IN ('public','private')
+  AND p.prosecdef
+  AND p.proname IN (
+    'register_business_card_event_with_token',
+    'consume_business_card_rate_limit',
+    'mirror_legacy_nfc_event_to_business',
+    'app_is_admin'
+  )
+  AND tn.nspname='public'
+  AND c.relname IN (
+    'app_business_card_tokens','app_business_card_rate_limits',
+    'app_business_card_rate_limit_maintenance','app_business_events',
+    'nfc_events','app_business_cards','app_businesses','app_profiles'
+  )
+  AND c.relkind IN ('r','p')
+ORDER BY function_schema,function_identity,table_name;
+
 SELECT c.relname AS table_name,
        c.relrowsecurity AS rls_enabled,
        c.relforcerowsecurity AS rls_forced,
