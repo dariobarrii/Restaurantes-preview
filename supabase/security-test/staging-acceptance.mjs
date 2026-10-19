@@ -228,9 +228,18 @@ async function inspectTenant(label, bearer, expectedBusiness, otherBusiness) {
   const mine = rows.filter((row) => row.business_id === expectedBusiness);
   const nfc = mine.filter((row) => row.event_type === "nfc_tap").length;
   const qr = mine.filter((row) => row.event_type === "qr_scan").length;
+  const now = Date.now();
+  const within = (row, days) => now - Date.parse(row.created_at) <= days * 86400000;
+  const daily = mine.filter((row) => within(row, 1)).length;
+  const weeklyNfc = mine.filter((row) => row.event_type === "nfc_tap" && within(row, 7)).length;
+  const weeklyQr = mine.filter((row) => row.event_type === "qr_scan" && within(row, 7)).length;
+  const monthly = mine.filter((row) => within(row, 30)).length;
   note(label + " reads own tenant events", mine.length === 4, "rows=" + mine.length);
   note(label + " cannot read the other tenant", !leaks, leaks ? "cross-business row exposed" : "no foreign rows");
   note(label + " sees known channel totals", nfc === 2 && qr === 2, "nfc=" + nfc + ", qr=" + qr);
+  note(label + " daily total matches", daily === 2, "total=" + daily);
+  note(label + " weekly NFC/QR totals match", weeklyNfc === 2 && weeklyQr === 1, "nfc=" + weeklyNfc + ", qr=" + weeklyQr);
+  note(label + " monthly total matches", monthly === 4, "total=" + monthly);
   return { rows, mine };
 }
 async function checkReviewIsolation(bearer, expectedBusiness, otherBusiness, label) {
