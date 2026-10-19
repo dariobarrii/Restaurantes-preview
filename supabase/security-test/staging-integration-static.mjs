@@ -136,6 +136,8 @@ test("nullable schema fields and panel fallbacks preserve unknown legacy values"
   assert.ok(index.includes("categoryNames[x.category]||x.category||'Sin categoría'"));
   assert.ok(index.includes("x.label||'Tarjeta sin nombre'"));
   assert.ok(!index.includes("target_url,status,created_at"));
+  assert.match(adminFunction,/from\("app_business_cards"\)\.select\("id,business_id,label,channel,target_url,status,archived_at"\)/);
+  assert.doesNotMatch(adminFunction,/from\("app_business_cards"\)\.select\("[^"]*created_at/);
 });
 
 test("dashboard mutations are server-authorized and client roles cannot promote themselves", () => {
