@@ -162,3 +162,5 @@ The fixture command changes only its marker-scoped staging test rows and Auth us
 - Fixture module parse/guard check passed: import with no credentials stopped at the expected missing-environment guard before any API request. No fixture setup or cleanup call was made.
 - A static assertion initially expected business-ID cleanup text after cleanup had been tightened to explicit row IDs; that assertion was corrected, and the complete static suite then passed 18/18.
 - No rows, permissions, migration state, or deployed functions were modified. No end-to-end staging acceptance or tenant-isolation result is claimed.
+
+- Run the data fixture only after migration 021 has been separately reviewed and applied in staging with a passing preflight; its review-write and direct-card-write assertions depend on the policies/grants expected from that migration. This phase did not apply either migration.
