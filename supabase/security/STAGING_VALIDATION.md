@@ -28,4 +28,4 @@ Migration 017 imports only events with a source timestamp and a unique card/busi
 
 ## Test status
 
-Offline source assertions and mocked Worker unit tests are prepared. They do not verify deployed Cloudflare limits, SQL ACLs, triggers, RLS, or two-restaurant isolation. Those checks remain pending in staging.
+21 offline source assertions were executed in the isolated Node REPL against the branch contents and passed. The committed node:test Worker and static test files were not run because no local Node/Deno CLI or branch checkout is available. The mocked Worker behavior tests remain pending execution. No SQL was parsed by PostgreSQL. These checks do not verify deployed Cloudflare limits, SQL ACLs, triggers, RLS, or two-restaurant isolation; all remain pending in staging.
