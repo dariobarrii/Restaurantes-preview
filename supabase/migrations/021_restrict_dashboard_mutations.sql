@@ -31,6 +31,21 @@ BEGIN
     END IF;
   END LOOP;
 
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_policy p
+    WHERE p.polrelid='public.app_business_review_snapshots'::regclass
+      AND p.polcmd IN ('a','*')
+      AND p.polname <> 'nq_central_member_review_insert'
+      AND (
+        0 = ANY(p.polroles)
+        OR 'anon'::regrole::oid = ANY(p.polroles)
+        OR 'authenticated'::regrole::oid = ANY(p.polroles)
+      )
+  ) THEN
+    RAISE EXCEPTION 'Existing public/anon/authenticated review INSERT policy must be reviewed before migration 021';
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='app_businesses' AND column_name='category' AND data_type='text')
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns
@@ -84,14 +99,31 @@ $review_sequence_acl$;
 -- Browser clients keep scoped reads; all business/card writes go through the
 -- authenticated management Edge Function using its server-side service role.
 REVOKE ALL PRIVILEGES ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated;
-REVOKE MAINTAIN ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.app_businesses TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.app_businesses TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
-REVOKE MAINTAIN ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
 -- Browser clients do not need card rows; token validation is the only public lookup.
 GRANT SELECT, INSERT, UPDATE ON TABLE public.app_business_cards TO service_role;
+
+-- MAINTAIN exists only on PostgreSQL 17+. Revoke it explicitly when available;
+-- older supported staging majors have no such table privilege.
+DO $revoke_maintain_acl$
+DECLARE
+  t text;
+BEGIN
+  IF current_setting('server_version_num')::integer >= 170000 THEN
+    FOREACH t IN ARRAY ARRAY[
+      'app_businesses','app_business_cards','app_profiles','app_business_members',
+      'app_business_events','app_business_review_snapshots'
+    ] LOOP
+      EXECUTE pg_catalog.format(
+        'REVOKE MAINTAIN ON TABLE public.%I FROM PUBLIC, anon, authenticated', t
+      );
+    END LOOP;
+  END IF;
+END
+$revoke_maintain_acl$;
 
 -- Profile self-service may change only full_name. Role and approval status are
 -- never writable by a browser client.
@@ -109,6 +141,33 @@ GRANT SELECT ON TABLE public.app_business_events TO authenticated;
 GRANT SELECT ON TABLE public.app_business_events TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_review_snapshots FROM PUBLIC, anon, authenticated;
+
+-- Table-level REVOKE does not remove earlier column-level ACLs. Clear those
+-- direct grants too, then add back only the reviewed profile/review columns.
+DO $revoke_column_acl$
+DECLARE
+  t text;
+  c record;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_businesses','app_business_cards','app_profiles','app_business_members',
+    'app_business_events','app_business_review_snapshots'
+  ] LOOP
+    FOR c IN
+      SELECT a.attname
+      FROM pg_catalog.pg_attribute a
+      WHERE a.attrelid=pg_catalog.to_regclass('public.' || t)
+        AND a.attnum > 0 AND NOT a.attisdropped
+    LOOP
+      EXECUTE pg_catalog.format(
+        'REVOKE ALL (%I) ON TABLE public.%I FROM PUBLIC, anon, authenticated',
+        c.attname, t
+      );
+    END LOOP;
+  END LOOP;
+END
+$revoke_column_acl$;
+
 GRANT SELECT ON TABLE public.app_business_review_snapshots TO authenticated;
 -- The client may submit only the tenant, capture kind, and manually observed
 -- count. id/captured_at/source are generated or fixed by server-side defaults.
@@ -122,9 +181,8 @@ DROP POLICY IF EXISTS nq_central_admin_business_select ON public.app_businesses;
 CREATE POLICY nq_central_admin_business_select ON public.app_businesses
   FOR SELECT TO authenticated USING ((SELECT private.app_is_admin()));
 
-DROP POLICY IF EXISTS nq_central_admin_card_select ON public.app_business_cards;
-CREATE POLICY nq_central_admin_card_select ON public.app_business_cards
-  FOR SELECT TO authenticated USING ((SELECT private.app_is_admin()));
+-- There is intentionally no authenticated card SELECT policy: the portal's card
+-- list is served by the authenticated management Edge Function, not PostgREST.
 
 DROP POLICY IF EXISTS nq_central_admin_profile_select ON public.app_profiles;
 CREATE POLICY nq_central_admin_profile_select ON public.app_profiles
@@ -216,16 +274,12 @@ BEGIN
      OR NOT pg_catalog.has_column_privilege('authenticated','public.app_profiles','full_name','UPDATE')
      OR pg_catalog.has_table_privilege('anon','public.app_businesses','REFERENCES')
      OR pg_catalog.has_table_privilege('anon','public.app_businesses','TRIGGER')
-     OR pg_catalog.has_table_privilege('anon','public.app_businesses','MAINTAIN')
      OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','REFERENCES')
      OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','TRIGGER')
-     OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','MAINTAIN')
      OR pg_catalog.has_table_privilege('anon','public.app_business_cards','REFERENCES')
      OR pg_catalog.has_table_privilege('anon','public.app_business_cards','TRIGGER')
-     OR pg_catalog.has_table_privilege('anon','public.app_business_cards','MAINTAIN')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_cards','REFERENCES')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_cards','TRIGGER')
-     OR pg_catalog.has_table_privilege('authenticated','public.app_business_cards','MAINTAIN')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_businesses','INSERT')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_businesses','UPDATE')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_cards','INSERT')
@@ -239,6 +293,42 @@ BEGIN
   END IF;
 END
 $verify$;
+
+DO $verify_column_acl$
+DECLARE
+  t text;
+  r text;
+  c record;
+  allow_insert boolean;
+  allow_update boolean;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_businesses','app_business_cards','app_profiles','app_business_members',
+    'app_business_events','app_business_review_snapshots'
+  ] LOOP
+    FOREACH r IN ARRAY ARRAY['anon','authenticated'] LOOP
+      FOR c IN
+        SELECT a.attname
+        FROM pg_catalog.pg_attribute a
+        WHERE a.attrelid=pg_catalog.to_regclass('public.' || t)
+          AND a.attnum > 0 AND NOT a.attisdropped
+      LOOP
+        allow_insert := r='authenticated'
+          AND t='app_business_review_snapshots'
+          AND c.attname IN ('business_id','platform','review_count');
+        allow_update := r='authenticated'
+          AND t='app_profiles'
+          AND c.attname='full_name';
+        IF pg_catalog.has_column_privilege(r,'public.' || t,c.attname,'INSERT') IS DISTINCT FROM allow_insert
+           OR pg_catalog.has_column_privilege(r,'public.' || t,c.attname,'UPDATE') IS DISTINCT FROM allow_update
+           OR pg_catalog.has_column_privilege(r,'public.' || t,c.attname,'REFERENCES') THEN
+          RAISE EXCEPTION 'Unexpected effective column write/reference privilege for % on public.%.%', r, t, c.attname;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+END
+$verify_column_acl$;
 
 DO $verify_restricted_acl$
 DECLARE
@@ -254,6 +344,9 @@ BEGIN
       FOREACH p IN ARRAY ARRAY[
         'INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','MAINTAIN'
       ] LOOP
+        IF p='MAINTAIN' AND current_setting('server_version_num')::integer < 170000 THEN
+          CONTINUE;
+        END IF;
         IF pg_catalog.has_table_privilege(r, 'public.' || t, p) THEN
           RAISE EXCEPTION 'Unexpected effective % privilege for % on public.%', p, r, t;
         END IF;
