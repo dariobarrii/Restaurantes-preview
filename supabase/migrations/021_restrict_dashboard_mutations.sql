@@ -11,6 +11,11 @@ BEGIN
     RAISE EXCEPTION 'Required private.app_is_admin() helper is missing';
   END IF;
 
+  IF pg_catalog.pg_get_serial_sequence('public.app_business_events','id') IS NULL
+     OR pg_catalog.pg_get_serial_sequence('public.app_business_review_snapshots','id') IS NULL THEN
+    RAISE EXCEPTION 'Migration 020 must establish managed ID defaults before migration 021';
+  END IF;
+
   FOREACH t IN ARRAY ARRAY[
     'app_businesses','app_business_cards','app_profiles','app_business_members',
     'app_business_events','app_business_review_snapshots'
@@ -53,56 +58,18 @@ BEGIN
 END
 $preflight$;
 
--- The portal inserts only business_id, platform, and review_count. Ensure
--- generated review IDs have a safe default even on staging schemas where the
--- original identity/serial default was omitted. Preserve the existing sequence
--- and advance it beyond every existing ID; no row values are changed.
-DO $review_id_sequence$
+-- Authenticated review inserts rely on the ID default created/verified by 020.
+-- Grant only sequence use needed for DEFAULT nextval; browser users cannot set IDs.
+DO $review_sequence_acl$
 DECLARE
   v_sequence text;
-  v_default text;
-  v_max_id bigint;
-  v_last_value bigint;
-  v_is_called boolean;
-  v_next_value bigint;
 BEGIN
   v_sequence := pg_catalog.pg_get_serial_sequence(
     'public.app_business_review_snapshots', 'id'
   );
-  SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
-    INTO v_default
-  FROM pg_catalog.pg_attrdef d
-  JOIN pg_catalog.pg_attribute a ON a.attrelid=d.adrelid AND a.attnum=d.adnum
-  WHERE d.adrelid='public.app_business_review_snapshots'::regclass
-    AND a.attname='id';
-
   IF v_sequence IS NULL THEN
-    IF v_default IS NOT NULL THEN
-      RAISE EXCEPTION 'Review id has an unmanaged default; inspect it before applying migration 021';
-    END IF;
-    IF pg_catalog.to_regclass('public.app_business_review_snapshots_id_seq') IS NOT NULL THEN
-      RAISE EXCEPTION 'Review ID sequence name is already occupied; inspect it before applying migration 021';
-    END IF;
-    CREATE SEQUENCE public.app_business_review_snapshots_id_seq;
-    ALTER SEQUENCE public.app_business_review_snapshots_id_seq
-      OWNED BY public.app_business_review_snapshots.id;
-    ALTER TABLE public.app_business_review_snapshots
-      ALTER COLUMN id SET DEFAULT nextval('public.app_business_review_snapshots_id_seq'::regclass);
-    v_sequence := pg_catalog.pg_get_serial_sequence(
-      'public.app_business_review_snapshots', 'id'
-    );
+    RAISE EXCEPTION 'Migration 020 must establish the review ID sequence first';
   END IF;
-
-  EXECUTE 'SELECT COALESCE(max(id),0) FROM public.app_business_review_snapshots'
-    INTO v_max_id;
-  EXECUTE pg_catalog.format('SELECT last_value, is_called FROM %s', v_sequence::regclass)
-    INTO v_last_value, v_is_called;
-  v_next_value := greatest(
-    v_max_id,
-    CASE WHEN v_is_called THEN v_last_value ELSE v_last_value - 1 END
-  ) + 1;
-  PERFORM pg_catalog.setval(v_sequence::regclass, v_next_value, false);
-
   EXECUTE pg_catalog.format(
     'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
     v_sequence::regclass
@@ -112,7 +79,7 @@ BEGIN
     v_sequence::regclass
   );
 END
-$review_id_sequence$;
+$review_sequence_acl$;
 
 -- Browser clients keep scoped reads; all business/card writes go through the
 -- authenticated management Edge Function using its server-side service role.
