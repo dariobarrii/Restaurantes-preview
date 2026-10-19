@@ -18,6 +18,8 @@ const categories = new Set(["restaurant","hair_salon","barbershop","beauty","gym
 const statuses = new Set(["pending","approved","suspended"]);
 const roles = new Set(["owner","manager","viewer"]);
 
+class PayloadTooLargeError extends Error {}
+
 function safeTarget(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2048) return null;
   try {
@@ -32,7 +34,7 @@ function cleanOrigin(req: Request): string | null {
 }
 async function readBody(req: Request): Promise<Record<string, unknown>> {
   const length = Number(req.headers.get("content-length") || "0");
-  if (length > 8192) throw new Error("request_too_large");
+  if (length > 8192) throw new PayloadTooLargeError();
   const reader = req.body?.getReader();
   if (!reader) throw new Error("invalid_request");
   const chunks: Uint8Array[] = [];
@@ -208,7 +210,8 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true }, 200, origin);
     }
     return json({ error: "unknown_action" }, 400, origin);
-  } catch {
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) return json({ error: "request_too_large" }, 413, cleanOrigin(req) || "");
     return json({ error: "invalid_request" }, 400, cleanOrigin(req) || "");
   }
 });
