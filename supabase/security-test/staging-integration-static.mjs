@@ -236,6 +236,8 @@ test("dashboard permissions revoke direct writes alongside server replacement op
     "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated",
     "GRANT INSERT (business_id, platform, review_count)",
     "REVOKE ALL ON SEQUENCE",
+    "DO $dashboard_sequence_acl$", "app_business_events','id')", "has_sequence_privilege",
+    "REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated",
     "has_table_privilege('authenticated','public.app_business_cards','SELECT')",
     "nq_central_profile_name_self_update","nq_central_member_review_insert",
     "p.status='approved'","b.status='approved'","review_count >= 0",
