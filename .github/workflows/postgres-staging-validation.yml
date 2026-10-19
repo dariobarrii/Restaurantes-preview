@@ -1,0 +1,73 @@
+{
+  "name": "PostgreSQL staging schema validation (manual approval required)",
+  "on": {
+    "workflow_dispatch": {
+      "inputs": {
+        "authorization": {
+          "description": "Only after owner approval: APPROVED_POSTGRES_VALIDATION",
+          "required": true,
+          "type": "string"
+        }
+      }
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "concurrency": {
+    "group": "nq-postgres-schema-validation",
+    "cancel-in-progress": false
+  },
+  "jobs": {
+    "validate": {
+      "if": "github.repository == 'dariobarrii/Restaurantes-preview' && github.ref == 'refs/heads/security/nq-central-staging-integration' && inputs.authorization == 'APPROVED_POSTGRES_VALIDATION'",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 20,
+      "environment": "nq-postgres-validation",
+      "services": {
+        "postgres": {
+          "image": "postgres:17.11",
+          "env": {
+            "POSTGRES_USER": "nq_ci_bootstrap",
+            "POSTGRES_DB": "nq_validation",
+            "POSTGRES_HOST_AUTH_METHOD": "trust"
+          },
+          "options": "--health-cmd \"pg_isready -U nq_ci_bootstrap -d nq_validation\" --health-interval 5s --health-timeout 5s --health-retries 12"
+        }
+      },
+      "env": {
+        "NQ_PG_CONTAINER": "${{ job.services.postgres.id }}",
+        "NQ_APPROVED_POSTGRES_DIGEST": "${{ vars.NQ_APPROVED_POSTGRES_DIGEST }}"
+      },
+      "steps": [
+        {
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Verify pinned image before supplying staging credentials",
+          "run": "node supabase/security-test/postgres-validation.mjs precheck"
+        },
+        {
+          "name": "Read-only schema export (private temporary files only)",
+          "env": {
+            "NQ_STAGING_READONLY_DB_URL": "${{ secrets.NQ_STAGING_READONLY_DB_URL }}",
+            "NQ_STAGING_CA_PEM": "${{ secrets.NQ_STAGING_CA_PEM }}"
+          },
+          "run": "node supabase/security-test/postgres-validation.mjs export"
+        },
+        {
+          "name": "Restore actual schema and run 020/021 twice only in local container",
+          "run": "node supabase/security-test/postgres-validation.mjs validate"
+        },
+        {
+          "name": "Delete private export and SQL logs",
+          "if": "always()",
+          "run": "node supabase/security-test/postgres-validation.mjs cleanup"
+        }
+      ]
+    }
+  }
+}
