@@ -81,7 +81,8 @@ test("token and historical mapping checks stay server-side and ambiguity-safe", 
 test("gateway body and response handling is bounded and secret-safe", () => {
   assert.match(worker,/readBounded\(request, 2048\)/);
   assert.match(worker,/readBounded\(response, 4096\)/);
-  assert.match(worker,/publicUpstreamResult/);\n  assert.match(worker,/target\.href\.includes\(gatewaySecret\)/);
+  assert.match(worker,/publicUpstreamResult/);
+  assert.match(worker,/target\.href\.includes\(gatewaySecret\)/);
   assert.match(worker,/url\.pathname !== ["']\/functions\/v1\/register-business-card-event/);
   assert.match(worker,/redirect:\s*["']manual["']/);
   assert.match(wranglerExample,/name = ["']RATE_LIMITER["']/);
