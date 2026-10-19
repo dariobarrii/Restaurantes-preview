@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql, dashboardPreflight, rollbackPlan, stagingFixture] = await Promise.all([
+const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql, dashboardPreflight, rollbackPlan, stagingFixture, pgValidationPlan] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
@@ -21,6 +21,7 @@ const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigrat
   readFile("supabase/security/dashboard-security-preflight.sql","utf8"),
   readFile("supabase/security/DASHBOARD_SECURITY_ROLLBACK.md","utf8"),
   readFile("supabase/security-test/staging-acceptance.mjs","utf8"),
+  readFile("supabase/security-test/POSTGRES_MIGRATION_VALIDATION.md","utf8"),
 ]);
 
 test("portal and card use business filtering and server gateway paths", () => {
@@ -230,7 +231,7 @@ test("admin action allowlists reject unexpected request fields", () => {
 test("dashboard permissions revoke direct writes alongside server replacement operations", () => {
   for (const sql of [
     "REVOKE ALL PRIVILEGES ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
-    "REVOKE MAINTAIN ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
+    "REVOKE MAINTAIN ON TABLE public.%I FROM PUBLIC, anon, authenticated",
     "REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated",
     "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated",
     "GRANT INSERT (business_id, platform, review_count)",
@@ -266,12 +267,14 @@ test("staging acceptance fixture is project-locked, scoped, and secret-free", ()
   assert.ok(stagingFixture.includes('base.hostname !== PROJECT_REF + ".supabase.co"'));
   assert.ok(stagingFixture.includes('const SOURCE = "nq_central_acceptance_fixture_v1"'));
   assert.ok(stagingFixture.includes('app_metadata?.nq_central_fixture === FIXTURE'));
-  assert.ok(stagingFixture.includes('if (!keep) await cleanup()'));
+  assert.ok(stagingFixture.includes("if (!allPassed)"));
+  assert.ok(stagingFixture.includes("automatic cleanup is disabled after any setup/test failure"));
   assert.ok(stagingFixture.includes('id=in.('));
   assert.ok(stagingFixture.includes('business_id: BUSINESS[tenant].id'));
   assert.ok(stagingFixture.includes('token_hash: digest(raw)'));
   assert.ok(stagingFixture.includes('page <= 50'));
-  assert.ok(stagingFixture.includes('"business_id=in.(" + Object.values(BUSINESS)'));
+  assert.ok(stagingFixture.includes("const businessIds = Object.values(BUSINESS)"));
+  assert.ok(stagingFixture.includes('" + businessIds + ")'));
   assert.ok(stagingFixture.includes('owner cannot capture reviews for another business'));
   assert.ok(stagingFixture.includes('viewer role cannot capture reviews for its own business'));
   assert.ok(stagingFixture.includes('eventExpectation(row.id)'));
@@ -296,4 +299,49 @@ test("product NFC/QR contract validates card state and keeps destinations behind
   assert.ok(dashboardMigration.includes("has_table_privilege('anon','public.app_business_cards','SELECT')"));
   assert.ok(adminFunction.includes("getReader()"));
   assert.ok(adminFunction.includes("total > 8192"));
+});
+
+
+test("fixture checks HTTP and final state, isolates authorization probes, and fails closed on cleanup", () => {
+  assert.match(stagingFixture,/expectedStatus/);
+  assert.match(stagingFixture,/readRows\("app_businesses"/);
+  assert.match(stagingFixture,/readRows\("app_business_cards"/);
+  assert.match(stagingFixture,/readRows\("app_business_card_tokens"/);
+  assert.match(stagingFixture,/readRows\("app_business_events"/);
+  assert.match(stagingFixture,/readRows\("app_business_review_snapshots"/);
+  assert.match(stagingFixture,/CRITICAL:.*restoration failed/);
+  assert.match(stagingFixture,/fixture is preserved and no broad cleanup was started/);
+  assert.match(stagingFixture,/Cleanup stopped: event full signature mismatch/);
+  assert.match(stagingFixture,/device_type=eq\.mobile&created_at=eq\./);
+  assert.match(stagingFixture,/captured_at=eq\./);
+  assert.match(stagingFixture,/token_hash=eq\./);
+  assert.match(stagingFixture,/HTTP .* but matching rows remain/);
+  assert.match(stagingFixture,/viewer role cannot capture reviews for own business/);
+  assert.match(stagingFixture,/user cannot self-assign administrator/);
+  assert.match(stagingFixture,/user cannot self-approve/);
+  assert.match(stagingFixture,/owner cannot capture reviews for another business/);
+  assert.match(stagingFixture,/cannot read the other tenant/);
+  assert.doesNotMatch(stagingFixture,/if \(!keep\) await cleanup\(\)/);
+});
+
+test("card portal reads remain behind the admin function and SQL ACLs cover column grants", () => {
+  assert.match(index,/adminRequest\(['"]cards['"]\)/);
+  assert.doesNotMatch(index,/\.from\(['"]app_business_cards['"]\)/);
+  assert.match(dashboardMigration,/REVOKE ALL \(%I\) ON TABLE public\.%I FROM PUBLIC, anon, authenticated/);
+  assert.match(dashboardMigration,/DO \$verify_column_acl\$/);
+  assert.match(dashboardMigration,/has_column_privilege\(r,'public\.' \|\| t,c\.attname,'REFERENCES'\)/);
+  assert.match(dashboardMigration,/allow_insert := r='authenticated'/);
+  assert.match(dashboardMigration,/allow_update := r='authenticated'/);
+  assert.doesNotMatch(dashboardMigration,/nq_central_admin_card_select/);
+  assert.match(schemaMigration,/LOCK TABLE public\.%I IN ACCESS EXCLUSIVE MODE/);
+  assert.match(schemaMigration,/pg_get_serial_sequence/);
+  assert.match(schemaMigration,/pg_depend/);
+  assert.match(schemaMigration,/v_sequence_owner IS DISTINCT FROM v_table_owner/);
+  assert.match(schemaMigration,/seqmin, seqmax, seqcycle/);
+  assert.match(schemaMigration,/v_max_id = 9223372036854775807/);
+  assert.match(schemaMigration,/ALTER SEQUENCE %s RESTART WITH %s/);
+  assert.match(schemaMigration,/ALTER COLUMN category DROP NOT NULL/);
+  assert.match(schemaMigration,/ALTER COLUMN label DROP NOT NULL/);
+  assert.match(pgValidationPlan,/exact PostgreSQL major version/);
+  assert.match(pgValidationPlan,/not yet been validated/);
 });
