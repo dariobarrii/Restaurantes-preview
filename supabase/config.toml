@@ -1,0 +1,5 @@
+[functions.manage-business-card-token]
+verify_jwt = true
+
+[functions.register-business-card-event]
+verify_jwt = false
