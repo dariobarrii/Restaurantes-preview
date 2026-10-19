@@ -44,6 +44,8 @@ test("registration and rate-limit RPC privileges are restricted in the migration
   assert.match(mirrorMigration,/DO \$acl_sweep\$/);
   assert.match(privilegeSql,/has_function_privilege/);
   assert.match(privilegeSql,/has_table_privilege/);
+  assert.match(privilegeSql,/service_role_delete/);
+  assert.match(privilegeSql,/authenticated_delete/);
   assert.match(privilegeSql,/pg_get_triggerdef/);
   assert.doesNotMatch(privilegeSql,/^\s*(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\b/im);
 });
