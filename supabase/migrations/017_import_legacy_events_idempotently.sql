@@ -74,7 +74,7 @@ resolved AS (
     legacy_id,
     COALESCE(card_business_id, name_business_id) AS business_id,
     event AS event_type,
-    COALESCE(created_at, pg_catalog.now()) AS created_at,
+    created_at,
     'legacy_nfc_events'::text AS source,
     device_type,
     matched_card_id AS card_id
