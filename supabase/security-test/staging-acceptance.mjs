@@ -143,6 +143,18 @@ async function signIn(label) {
 function ownsCard(cardKey, tenant) {
   return cardKey.startsWith(tenant + "_");
 }
+function eventExpectation(id) {
+  const index = EVENT_IDS.indexOf(Number(id));
+  if (index < 0) return null;
+  const tenant = index < 4 ? "a" : "b";
+  const position = index % 4;
+  const channel = position < 2 ? "nfc" : "qr";
+  return {
+    business_id: BUSINESS[tenant].id,
+    event_type: channel === "nfc" ? "nfc_tap" : "qr_scan",
+    card_id: CARD_IDS[tenant + "_" + channel],
+  };
+}
 async function prepareBusinessRows() {
   for (const b of Object.values(BUSINESS)) {
     const existing = await get("app_businesses", "select=id,slug,name&id=eq." + b.id);
@@ -190,9 +202,13 @@ async function prepareMembershipsAndTokens() {
 async function prepareEvents() {
   const businessIds = Object.values(BUSINESS).map((b) => b.id).join(",");
   const eventIds = EVENT_IDS.join(",");
-  const oldEvents = await get("app_business_events", "select=id,business_id,source&id=in.(" + eventIds + ")");
+  const oldEvents = await get("app_business_events", "select=id,business_id,event_type,card_id,source&id=in.(" + eventIds + ")");
   for (const row of (oldEvents.data || [])) {
-    if (row.source !== SOURCE || !Object.values(BUSINESS).some((b) => b.id === row.business_id)) throw new Error("Fixture event ID collides with a non-fixture row.");
+    const expected = eventExpectation(row.id);
+    if (!expected || row.source !== SOURCE || row.business_id !== expected.business_id ||
+        row.event_type !== expected.event_type || row.card_id !== expected.card_id) {
+      throw new Error("Fixture event ID collides with a row outside the exact fixture signature.");
+    }
   }
   const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
   for (const row of (oldReviews.data || [])) {
@@ -201,8 +217,20 @@ async function prepareEvents() {
       throw new Error("Fixture review ID collides with a non-fixture row.");
     }
   }
-  await remove("app_business_events", "id=in.(" + eventIds + ")");
-  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")");
+  for (const id of EVENT_IDS) {
+    const expected = eventExpectation(id);
+    await remove("app_business_events",
+      "id=eq." + id + "&business_id=eq." + expected.business_id +
+      "&source=eq." + encodeURIComponent(SOURCE) + "&event_type=eq." + expected.event_type +
+      "&card_id=eq." + expected.card_id);
+  }
+  for (const id of REVIEW_IDS) {
+    const index = REVIEW_IDS.indexOf(id);
+    const business = BUSINESS[index === 0 ? "a" : "b"];
+    await remove("app_business_review_snapshots",
+      "id=eq." + id + "&business_id=eq." + business.id +
+      "&platform=eq." + encodeURIComponent("Google apertura") + "&review_count=eq.7&source=eq.manual");
+  }
   const now = Date.now();
   const rows = [];
   let eventIndex = 0;
@@ -358,9 +386,13 @@ async function cleanup() {
       throw new Error("Cleanup stopped: a deterministic card ID no longer matches this fixture.");
     }
   }
-  const oldEvents = await get("app_business_events", "select=id,business_id,source&id=in.(" + EVENT_IDS.join(",") + ")");
+  const oldEvents = await get("app_business_events", "select=id,business_id,event_type,card_id,source&id=in.(" + EVENT_IDS.join(",") + ")");
   for (const row of (oldEvents.data || [])) {
-    if (row.source !== SOURCE || !Object.values(BUSINESS).some((item) => item.id === row.business_id)) throw new Error("Cleanup stopped: event ID is outside the fixture scope.");
+    const expected = eventExpectation(row.id);
+    if (!expected || row.source !== SOURCE || row.business_id !== expected.business_id ||
+        row.event_type !== expected.event_type || row.card_id !== expected.card_id) {
+      throw new Error("Cleanup stopped: event row is outside the exact fixture signature.");
+    }
   }
   const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
   for (const row of (oldReviews.data || [])) {
@@ -369,10 +401,28 @@ async function cleanup() {
       throw new Error("Cleanup stopped: review ID is outside the fixture scope.");
     }
   }
-  await remove("app_business_events", "id=in.(" + EVENT_IDS.join(",") + ")&source=eq." + encodeURIComponent(SOURCE));
-  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")&source=eq.manual");
-  await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
-  await remove("app_business_cards", "id=in.(" + cardIds + ")");
+  for (const id of EVENT_IDS) {
+    const expected = eventExpectation(id);
+    await remove("app_business_events",
+      "id=eq." + id + "&business_id=eq." + expected.business_id +
+      "&source=eq." + encodeURIComponent(SOURCE) + "&event_type=eq." + expected.event_type +
+      "&card_id=eq." + expected.card_id);
+  }
+  for (const id of REVIEW_IDS) {
+    const index = REVIEW_IDS.indexOf(id);
+    const business = BUSINESS[index === 0 ? "a" : "b"];
+    await remove("app_business_review_snapshots",
+      "id=eq." + id + "&business_id=eq." + business.id +
+      "&platform=eq." + encodeURIComponent("Google apertura") + "&review_count=eq.7&source=eq.manual");
+  }
+  for (const [cardKey, id] of Object.entries(CARD_IDS)) {
+    const tenant = cardKey.startsWith("a_") ? "a" : "b";
+    const target = "https://example.invalid/nq-fixture/" + tenant + "/" + cardKey;
+    await remove("app_business_card_tokens", "card_id=eq." + id);
+    await remove("app_business_cards",
+      "id=eq." + id + "&business_id=eq." + BUSINESS[tenant].id +
+      "&target_url=eq." + encodeURIComponent(target));
+  }
   const authUsers = await listAuthUsers();
   const ownedIds = authUsers.filter((u) => u.app_metadata?.nq_central_fixture === FIXTURE && Object.values(emails).includes(u.email?.toLowerCase())).map((u) => u.id);
   if (ownedIds.length) {
@@ -380,7 +430,11 @@ async function cleanup() {
     await remove("app_business_members", "business_id=in.(" + Object.values(BUSINESS).map((b) => b.id).join(",") + ")&user_id=in.(" + idFilter + ")");
     await remove("app_profiles", "user_id=in.(" + idFilter + ")");
   }
-  await remove("app_businesses", "id=in.(" + Object.values(BUSINESS).map((b) => b.id).join(",") + ")");
+  for (const business of Object.values(BUSINESS)) {
+    await remove("app_businesses",
+      "id=eq." + business.id + "&slug=eq." + encodeURIComponent(business.slug) +
+      "&name=eq." + encodeURIComponent(business.name));
+  }
   for (const id of ownedIds) {
     await request(new URL("admin/users/" + encodeURIComponent(id), auth), { method: "DELETE" });
   }
