@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import worker from "./index.ts";
+import worker from "./index.mjs";
 
 const origin = "https://staging.example.invalid";
 const upstream = "https://stage-project.supabase.co/functions/v1/register-business-card-event";
