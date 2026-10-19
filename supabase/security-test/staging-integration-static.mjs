@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql, dashboardPreflight, rollbackPlan] = await Promise.all([
+const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql, dashboardPreflight, rollbackPlan, stagingFixture] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
@@ -20,6 +20,7 @@ const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigrat
   readFile("supabase/security/historical-event-reconciliation.sql","utf8"),
   readFile("supabase/security/dashboard-security-preflight.sql","utf8"),
   readFile("supabase/security/DASHBOARD_SECURITY_ROLLBACK.md","utf8"),
+  readFile("supabase/security-test/staging-acceptance.mjs","utf8"),
 ]);
 
 test("portal and card use business filtering and server gateway paths", () => {
@@ -252,6 +253,19 @@ test("dashboard preflight is catalog-only and contains a staged rollback plan", 
   assert.ok(rollbackPlan.includes("Do not drop columns automatically"));
   assert.ok(rollbackPlan.includes("do not restore blanket authenticated grants"));
   assert.ok(dashboardMigration.includes("m.member_role IN ('owner','manager')"));
+});
+
+test("staging acceptance fixture is project-locked, scoped, and secret-free", () => {
+  assert.ok(stagingFixture.includes('const PROJECT_REF = "rxxbmqilnozcnpwguqga"'));
+  assert.ok(stagingFixture.includes('process.argv[projectArg + 1] !== PROJECT_REF'));
+  assert.ok(stagingFixture.includes('base.hostname !== PROJECT_REF + ".supabase.co"'));
+  assert.ok(stagingFixture.includes('const SOURCE = "nq_central_acceptance_fixture_v1"'));
+  assert.ok(stagingFixture.includes('app_metadata?.nq_central_fixture === FIXTURE'));
+  assert.ok(stagingFixture.includes('if (!keep) await cleanup()'));
+  assert.ok(stagingFixture.includes('business_id=in.('));
+  assert.ok(stagingFixture.includes('token_hash: digest(raw)'));
+  assert.ok(!stagingFixture.includes("service_role_key ="));
+  assert.ok(!stagingFixture.includes("console.log("));
 });
 
 test("product NFC/QR contract validates card state and keeps destinations behind token flow", () => {
