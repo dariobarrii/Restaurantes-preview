@@ -39,7 +39,7 @@ test("registration and rate-limit RPC privileges are restricted in the migration
   assert.match(eventMigration,/REVOKE INSERT ON TABLE public\.nfc_events FROM PUBLIC, anon, authenticated/i);
   assert.match(eventMigration,/REVOKE ALL PRIVILEGES ON TABLE public\.app_business_card_tokens FROM PUBLIC, anon, authenticated/i);
   assert.match(mirrorMigration,/REVOKE EXECUTE ON FUNCTION public\.mirror_legacy_nfc_event_to_business\(\)/);
-  assert.match(mirrorMigration,/DO \\$acl_sweep\\$/);
+  assert.match(mirrorMigration,/DO \$acl_sweep\$/);
   assert.match(privilegeSql,/has_function_privilege/);
   assert.match(privilegeSql,/has_table_privilege/);
   assert.match(privilegeSql,/pg_get_triggerdef/);
