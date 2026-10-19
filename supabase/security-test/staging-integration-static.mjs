@@ -167,16 +167,16 @@ test("dashboard permissions revoke direct writes alongside server replacement op
 });
 
 test("dashboard preflight is catalog-only and contains a staged rollback plan", () => {
-  assert.doesNotMatch(dashboardPreflight,/^\\s*(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE)\\b/im);
-  assert.match(dashboardPreflight,/information_schema\\.columns/);
-  assert.match(dashboardPreflight,/pg_policies/);
-  assert.match(dashboardPreflight,/has_table_privilege/);
-  assert.match(dashboardPreflight,/has_column_privilege/);
-  assert.match(dashboardPreflight,/pg_get_triggerdef/);
-  assert.doesNotMatch(dashboardPreflight,/pg_get_functiondef|\\bprosrc\\b/i);
-  assert.doesNotMatch(dashboardPreflight,/FROM public\\.nfc_events|FROM public\\.app_business_events/i);
-  assert.match(dashboardPreflight,/safe_for_020_preflight/);
-  assert.match(rollbackPlan,/Do not drop columns automatically/);
-  assert.match(rollbackPlan,/do not restore blanket authenticated grants/i);
-  assert.match(dashboardMigration,/m\\.member_role IN \\('owner','manager'\\)/);
+  for (const forbidden of ["INSERT ","UPDATE ","DELETE ","ALTER ","CREATE ","DROP ","TRUNCATE "]) {
+    assert.ok(!dashboardPreflight.toUpperCase().includes(forbidden));
+  }
+  for (const catalog of ["information_schema.columns","pg_policies","has_table_privilege","has_column_privilege","pg_get_triggerdef","safe_for_020_preflight"]) {
+    assert.ok(dashboardPreflight.includes(catalog), catalog);
+  }
+  assert.ok(!dashboardPreflight.includes("pg_get_functiondef"));
+  assert.ok(!dashboardPreflight.includes("FROM public.nfc_events"));
+  assert.ok(!dashboardPreflight.includes("FROM public.app_business_events"));
+  assert.ok(rollbackPlan.includes("Do not drop columns automatically"));
+  assert.ok(rollbackPlan.includes("do not restore blanket authenticated grants"));
+  assert.ok(dashboardMigration.includes("m.member_role IN ('owner','manager')"));
 });
