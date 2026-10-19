@@ -94,3 +94,19 @@ Changes are prepared on `security/nq-central-staging-integration`; none of the n
 - Static source assertions: 12/12 passed from a temporary copy of the updated branch snapshot.
 - The Node CLI is unavailable in this runtime, so the standard `node --test` command could not be invoked. The tests were evaluated in an isolated Node REPL harness without installing dependencies.
 - No Edge Function, database RLS, auth, two-tenant, gateway deployment, or end-to-end acceptance tests have been run.
+
+
+## 2026-10-19 staging preflight and dashboard follow-up
+
+- The authorized project identity was confirmed as NQ Central Security Test (rxxbmqilnozcnpwguqga). No production project was queried.
+- Fixed the admin card-list query to stop requesting app_business_cards.created_at; that column is absent in staging and is not added by migration 020. The UI continues to display a neutral label when label is NULL.
+- Added static assertions for the missing timestamp regression, all ten administration actions, action-level input checks, and explicit not-found responses for targeted updates.
+- Code-level checks run from an isolated Node REPL against the branch snapshot: 5/5 focused checks passed. The repository node --test and Worker suite were not rerun in this turn because the local checkout is not the GitHub branch and the Node CLI is unavailable. No integration tests are implied by those focused assertions.
+- Read-only dashboard preflight results:
+  - app_businesses.category and app_business_cards.label are absent; the 020 preflight marks these nullable additions safe. created_at is absent on cards and is intentionally not in 020.
+  - authenticated still has direct write, TRUNCATE, TRIGGER, REFERENCES, and MAINTAIN privileges on app_businesses and app_business_cards; anon has SELECT and MAINTAIN. RLS is enabled but not forced. Migration 021 remains unapplied.
+  - authenticated currently cannot update app_profiles.full_name; the 021 column grant is required for the self-service profile flow.
+  - private.app_is_admin() exists and is executable by authenticated. Registration and rate-limit RPCs are SECURITY DEFINER and executable by service_role only. The mirror trigger query returned no rows.
+  - No migration was applied, no staging rows or permissions were changed, and no Edge Function was deployed.
+- Read-only historical reconciliation: 64 legacy test events have unique attribution and source timestamps (62 NFC, 2 QR); 0 missing source dates, 0 ambiguous/unmatched events, 0 already imported, 0 attribution/channel/date mismatches, and 0 duplicate legacy ID groups. These counts are staging test data and are not commercial metrics. Historical import remains unapplied.
+- Current staging Edge Functions do not include the product register-business-card-event or manage-business-administration function. Thus dashboard writes, token lifecycle, and product NFC/QR acceptance remain blocked on reviewed migrations and staging Edge Function deployment.
