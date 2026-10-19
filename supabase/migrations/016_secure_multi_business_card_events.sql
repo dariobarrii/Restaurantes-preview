@@ -130,14 +130,13 @@ BEGIN
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND p.proname = 'consume_business_card_rate_limit'
-      AND p.prosecdef
   LOOP
     found_rate_limit_function := true;
     EXECUTE pg_catalog.format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated', f.signature);
     EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION %s TO service_role', f.signature);
-    IF pg_catalog.has_function_privilege('anon', f.signature, 'EXECUTE')
-       OR pg_catalog.has_function_privilege('authenticated', f.signature, 'EXECUTE')
-       OR NOT pg_catalog.has_function_privilege('service_role', f.signature, 'EXECUTE') THEN
+    IF pg_catalog.has_function_privilege('anon', f.signature::oid, 'EXECUTE')
+       OR pg_catalog.has_function_privilege('authenticated', f.signature::oid, 'EXECUTE')
+       OR NOT pg_catalog.has_function_privilege('service_role', f.signature::oid, 'EXECUTE') THEN
       RAISE EXCEPTION 'Rate-limit RPC privileges are not restricted to service_role';
     END IF;
   END LOOP;
