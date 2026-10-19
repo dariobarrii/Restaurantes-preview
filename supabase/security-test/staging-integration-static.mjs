@@ -152,9 +152,32 @@ test("dashboard mutations are server-authorized and client roles cannot promote 
   assert.ok(adminFunction.includes('profile?.status !== "approved"'));
   assert.ok(adminFunction.includes("input.user_id === authData.user.id"));
   assert.ok(!adminFunction.includes("update({ role:"));
-  for (const action of ["profiles","business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update"]) {
+  for (const action of ["dashboard","profiles","cards","business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update"]) {
     assert.ok(adminFunction.includes(action), action);
   }
+});
+
+
+test("each dashboard mutation validates identifiers, allowed fields, and authorization", () => {
+  for (const validation of [
+    "typeof input.name === \"string\"",
+    "!slugPattern.test(slug)",
+    "!categories.has(category)",
+    "!uuid.test(input.id)",
+    "!statuses.has(input.status)",
+    "input.user_id === authData.user.id",
+    "!roles.has(input.member_role)",
+    "!new Set([\"nfc\",\"qr\"]).has(input.channel)",
+    "safeTarget(input.target_url)",
+    "!new Set([\"active\",\"paused\"]).has(input.status)",
+    "unknown_action",
+  ]) assert.ok(adminFunction.includes(validation), validation);
+  assert.ok(adminFunction.includes("const patch: Record<string, string> = {}"));
+  assert.ok(adminFunction.includes("business.data?.status !== \"approved\""));
+  assert.ok(adminFunction.includes("business?.status !== \"approved\""));
+  assert.ok(adminFunction.includes("card_write_failed"));
+  assert.ok(adminFunction.includes("business_write_failed"));
+  assert.ok(adminFunction.includes("membership_write_failed"));
 });
 
 test("dashboard permissions revoke direct writes alongside server replacement operations", () => {
