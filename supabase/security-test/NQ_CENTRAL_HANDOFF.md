@@ -23,10 +23,12 @@ En d5bb53d se ejecutaron realmente Node 24.19.0: 24 pruebas estáticas + 5 del h
 
 Bloque PostgreSQL preparado esta jornada: workflow manual sin triggers push/PR, runner con PostgreSQL 17.11 real, exportación read-only privada, preservación de roles/ACL y bloqueo por dependencias ausentes. `postgres-plan-local.test.mjs` contiene 4 pruebas puras de guards: no simulan PostgreSQL ni ejecutan Docker. Ver `POSTGRES_ACTIONS_PLAN.md`.
 
+Bloque portal completado: `nq-central-data.mjs` y `index.html` preservan el negocio seleccionado, paginan con count exacto y orden estable por fecha/id, detectan respuestas truncadas/repetidas y rechazan historiales >50.000 sin publicar totales parciales. Todas las páginas filtran business_id en Supabase. La ventana de lectura usa una fecha máxima fija; no es un snapshot transaccional, por lo que cambios concurrentes detectados deben reintentarse. Se descartan respuestas antiguas tras cambiar de negocio/cerrar sesión, se limpian cachés/formularios y se deshabilita exportación durante cargas/fallos. CSV tiene BOM/saltos reales y neutralización de fórmulas. La agrupación diaria de reseñas elige la captura más reciente en cada canal. Recuperación desde ajustes usa la misma ruta de staging que el formulario de login. `portal-data-local.test.mjs`: 9/9 pruebas locales aprobadas, incluidas llamadas al loadClient real en VM con API sustituida (no RLS). Las dos regresiones iniciales del portal fallaron antes de la corrección. La suite estática existente sigue 24/24.
+
 ## Pendientes priorizados y bloqueos externos
 
 1. Validación PostgreSQL real de 020/021 (dos pasadas cada una). Falta servidor local/dump o habilitar la alternativa Actions tras aprobación. El workflow nuevo requiere registro en la rama por defecto; no se ha modificado main. Faltan rol/conexión de lectura, CA, digest de imagen y entorno protegido. Vanilla PostgreSQL puede no tener extensiones Supabase; debe abortar sin sustituirlas.
-2. Corregir los fallos funcionales reproducibles del portal y los límites de petición de credenciales; actualizar este documento con resultados de cada bloque.
+2. Revisar límites de petición/emisión de credenciales y el scanner actual; los fallos de selección/paginación/carreras de carga del portal ya se corrigieron localmente. Para historiales >50.000, diseñar agregación servidor por business_id antes de ampliar límites del navegador.
 3. Preparar aceptación integral tras resolver contratos/esquema/despliegues; no ejecutar escrituras ahora. El endpoint de producto no está desplegado.
 4. Demostrar aislamiento real entre dos usuarios y restaurantes, ciclo de tarjetas/tokens, rate limiting y repetición de solicitudes. Las pruebas unitarias no sustituyen esa evidencia.
 5. Importación histórica y espejo solo después de conciliación y aprobación expresa. No importar los 64 eventos de prueba ni alterar fechas/atribuciones ahora.
@@ -39,4 +41,4 @@ Bloque PostgreSQL preparado esta jornada: workflow manual sin triggers push/PR, 
 4. Para PostgreSQL seguir `POSTGRES_ACTIONS_PLAN.md` o `POSTGRES_MIGRATION_VALIDATION.md`. No usar catálogos reconstruidos/mocks como sustituto de un dump/restauración fiel.
 5. Actualizar este relevo y hacer commits pequeños. Nunca incluir secretos, dumps privados o logs SQL completos en Git/chat.
 
-Próximo cambio de código recomendado: resolver selección/paginación de negocios en el portal y cubrirlo con pruebas locales que ejecuten el código real; revisar después límites de body y contrato de emisión de credenciales.
+Próximo cambio de código recomendado: revisar el límite de body de manage-business-card-token y las pruebas del scanner de producto, sin conectar endpoints E2E ni desplegar.
