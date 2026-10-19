@@ -161,10 +161,12 @@ test("dashboard permissions revoke direct writes alongside server replacement op
     "REVOKE MAINTAIN ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
     "REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated",
     "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated",
-    "No client card SELECT grants","has_table_privilege('authenticated','public.app_business_cards','SELECT')",
+"has_table_privilege('authenticated','public.app_business_cards','SELECT')",
     "nq_central_profile_name_self_update","nq_central_member_review_insert",
     "p.status='approved'","b.status='approved'","has_column_privilege",
   ]) assert.ok(dashboardMigration.includes(sql), sql);
+  assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO anon"));
+  assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO authenticated"));
 });
 
 test("dashboard preflight is catalog-only and contains a staged rollback plan", () => {
