@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "profile_status") {
       if (typeof input.user_id !== "string" || !uuid.test(input.user_id) || input.user_id === authData.user.id ||
-          typeof input.status !== "string" || !new Set(["pending","approved","suspended","rejected"]).has(input.status)) {
+          typeof input.status !== "string" || !new Set(["pending","approved","rejected"]).has(input.status)) {
         return json({ error: "invalid_profile_change" }, 400, origin);
       }
       const { error } = await admin.from("app_profiles").update({ status: input.status }).eq("user_id", input.user_id);
