@@ -20,6 +20,7 @@ const roles = new Set(["owner","manager","viewer"]);
 
 class PayloadTooLargeError extends Error {}
 class ResultLimitError extends Error {}
+class AdminReadError extends Error {}
 
 const ADMIN_PAGE_SIZE = 1000;
 const MAX_ADMIN_RESULT_ROWS = 50000;
@@ -28,8 +29,11 @@ async function readAllRows(buildPage: (from: number, to: number) => any): Promis
   const rows: any[] = [];
   for (let from = 0; from < MAX_ADMIN_RESULT_ROWS; from += ADMIN_PAGE_SIZE) {
     const to = Math.min(from + ADMIN_PAGE_SIZE - 1, MAX_ADMIN_RESULT_ROWS - 1);
-    const { data, error } = await buildPage(from, to);
-    if (error) throw error;
+    let result;
+    try { result = await buildPage(from, to); }
+    catch { throw new AdminReadError(); }
+    const { data, error } = result;
+    if (error) throw new AdminReadError();
     const page = Array.isArray(data) ? data : [];
     rows.push(...page);
     if (page.length < ADMIN_PAGE_SIZE) return rows;
@@ -41,7 +45,7 @@ function safeTarget(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2048) return null;
   try {
     const u = new URL(value);
-    return u.protocol === "https:" && !u.username && !u.password && !/[\\s]/.test(value) ? u.href : null;
+    return u.protocol === "https:" && !u.username && !u.password && !/\s/.test(value) ? u.href : null;
   } catch { return null; }
 }
 function cleanOrigin(req: Request): string | null {
@@ -98,7 +102,7 @@ Deno.serve(async (req: Request) => {
     if (!url || !anonKey || !serviceKey) return json({ error: "server_configuration_error" }, 500, origin);
 
     const authorization = req.headers.get("authorization") || "";
-    const bearer = authorization.match(/^Bearer\\s+(.+)$/i)?.[1];
+    const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!bearer) return json({ error: "authentication_required" }, 401, origin);
 
     const authClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -131,10 +135,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "profiles") {
-      const { data, error } = await admin.from("app_profiles")
-        .select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false});
-      if (error) return json({ error: "admin_read_failed" }, 503, origin);
-      return json({ profiles: data || [] }, 200, origin);
+      const profiles = await readAllRows((from, to) => admin.from("app_profiles")
+        .select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to));
+      return json({ profiles }, 200, origin);
     }
     if (action === "dashboard") {
       const [businesses, events, reviews, profiles] = await Promise.all([
@@ -164,8 +167,14 @@ Deno.serve(async (req: Request) => {
     if (action === "business_update") {
       if (typeof input.id !== "string" || !uuid.test(input.id)) return json({ error: "invalid_business" }, 400, origin);
       const patch: Record<string, string> = {};
-      if (typeof input.name === "string" && input.name.trim() && input.name.trim().length <= 120) patch.name = input.name.trim();
-      if (typeof input.slug === "string" && slugPattern.test(input.slug.trim().toLowerCase())) patch.slug = input.slug.trim().toLowerCase();
+      if (input.name !== undefined) {
+        if (typeof input.name !== "string" || !input.name.trim() || input.name.trim().length > 120) return json({ error: "invalid_business" }, 400, origin);
+        patch.name = input.name.trim();
+      }
+      if (input.slug !== undefined) {
+        if (typeof input.slug !== "string" || !slugPattern.test(input.slug.trim().toLowerCase())) return json({ error: "invalid_business" }, 400, origin);
+        patch.slug = input.slug.trim().toLowerCase();
+      }
       if (!Object.keys(patch).length) return json({ error: "invalid_business" }, 400, origin);
       const { data, error } = await admin.from("app_businesses").update(patch).eq("id", input.id).select("id").maybeSingle();
       if (error) return json({ error: "business_write_failed" }, 409, origin);
@@ -227,8 +236,11 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "card_update") {
       if (typeof input.id !== "string" || !uuid.test(input.id)) return json({ error: "invalid_card" }, 400, origin);
-      const patch: Record<string, string> = {};
-      if (typeof input.label === "string" && input.label.trim() && input.label.trim().length <= 120) patch.label = input.label.trim();
+      const patch: Record<string, unknown> = {};
+      if (input.label !== undefined) {
+        if (typeof input.label !== "string" || !input.label.trim() || input.label.trim().length > 120) return json({ error: "invalid_card" }, 400, origin);
+        patch.label = input.label.trim();
+      }
       if (input.target_url !== undefined) {
         const targetUrl = safeTarget(input.target_url);
         if (!targetUrl) return json({ error: "invalid_destination" }, 400, origin);
@@ -238,11 +250,17 @@ Deno.serve(async (req: Request) => {
         if (typeof input.status !== "string" || !new Set(["active","paused"]).has(input.status)) return json({ error: "invalid_card_status" }, 400, origin);
         patch.status = input.status;
       }
-      if (input.archived === true) {
+      if (input.archived !== undefined) {
+        if (input.archived !== true) return json({ error: "invalid_card_change" }, 400, origin);
         patch.status = "paused";
-        (patch as Record<string, unknown>).archived_at = new Date().toISOString();
+        patch.archived_at = new Date().toISOString();
       }
       if (!Object.keys(patch).length) return json({ error: "invalid_card_change" }, 400, origin);
+      const { data: existingCard, error: lookupError } = await admin.from("app_business_cards")
+        .select("id,archived_at").eq("id", input.id).maybeSingle();
+      if (lookupError) return json({ error: "card_lookup_failed" }, 503, origin);
+      if (!existingCard) return json({ error: "card_not_found" }, 404, origin);
+      if (existingCard.archived_at && patch.status === "active") return json({ error: "card_archived" }, 409, origin);
       const { data, error } = await admin.from("app_business_cards").update(patch).eq("id", input.id).select("id").maybeSingle();
       if (error) return json({ error: "card_write_failed" }, 409, origin);
       if (!data) return json({ error: "card_not_found" }, 404, origin);
@@ -252,6 +270,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     if (error instanceof PayloadTooLargeError) return json({ error: "request_too_large" }, 413, cleanOrigin(req) || "");
     if (error instanceof ResultLimitError) return json({ error: "result_limit_exceeded" }, 503, cleanOrigin(req) || "");
+    if (error instanceof AdminReadError) return json({ error: "admin_read_failed" }, 503, cleanOrigin(req) || "");
     return json({ error: "invalid_request" }, 400, cleanOrigin(req) || "");
   }
 });
