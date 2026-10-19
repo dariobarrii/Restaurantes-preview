@@ -148,22 +148,99 @@ table td:not(:first-child){
 "use strict";
 const demo={1:{nfc:24,qr:16,review:1,labels:["00","04","08","12","16","20","23"],a:[0,0,2,5,8,6,3],b:[0,0,1,3,5,4,3]},7:{nfc:148,qr:92,review:3,labels:["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"],a:[13,18,17,24,20,31,25],b:[8,12,10,14,13,19,16]},30:{nfc:592,qr:367,review:12,labels:["Sem 1","Sem 2","Sem 3","Sem 4"],a:[112,139,158,183],b:[70,85,94,118]},90:{nfc:1724,qr:1032,review:29,labels:["Mes 1","Mes 2","Mes 3"],a:[480,565,679],b:[287,346,399]}};
 const cards=[{name:"Mesa 5",type:"NFC + QR",nfc:84,qr:32,status:"Activa"},{name:"Recepción",type:"NFC + QR",nfc:63,qr:22,status:"Activa"},{name:"Mesa 2",type:"NFC + QR",nfc:48,qr:18,status:"Activa"},{name:"Terraza",type:"NFC + QR",nfc:30,qr:12,status:"Activa"},{name:"Mesa 8",type:"NFC",nfc:21,qr:0,status:"Activa"}];
-let period=7;const simulatedEvents=[];const charts={};const titles={inicio:"Bienvenido a NQ Central",estadisticas:"Estadísticas",tarjetas:"Mis tarjetas NFC y QR",resenas:"Reputación de Google",control:"Apertura y cierre de reseñas",informes:"Informes",perfil:"Mi restaurante"};
+let period=7;let seriesMode='both';const simulatedEvents=[];const charts={};const titles={inicio:"Bienvenido a NQ Central",estadisticas:"Estadísticas",tarjetas:"Mis tarjetas NFC y QR",resenas:"Reputación de Google",control:"Apertura y cierre de reseñas",informes:"Informes",perfil:"Mi restaurante"};
 function metricsHtml(d){return [['Interacciones NFC',d.nfc,'↗ Actividad del período','◉'],['Escaneos QR',d.qr,'↗ Actividad del período','▦'],['Interacciones totales',d.nfc+d.qr,'NFC + QR','◎'],['Nuevas reseñas',d.review,'Variación ilustrativa','★']].map(x=>'<article class="card metric-tile"><div class="metric-icon">'+x[3]+'</div><div class="label">'+x[0]+'</div><div class="number">'+x[1].toLocaleString('es-ES')+'</div><div class="positive">'+x[2]+'</div></article>').join('')}
 function activeData(){const d=demo[period];const extraNfc=simulatedEvents.filter(e=>e.type==='NFC').length,extraQr=simulatedEvents.filter(e=>e.type==='QR').length;return {...d,nfc:d.nfc+extraNfc,qr:d.qr+extraQr,a:d.a.map((n,i)=>n+(i===d.a.length-1?extraNfc:0)),b:d.b.map((n,i)=>n+(i===d.b.length-1?extraQr:0))}}
 function renderLiveFeed(highlight=false){
  const initial=[{type:'NFC',place:'Mesa 05',time:'19:42'},{type:'QR',place:'Terraza',time:'19:39'},{type:'NFC',place:'Recepción',time:'19:36'}];
  const entries=[...simulatedEvents.slice().reverse(),...initial].slice(0,3);
- document.getElementById('liveFeed').innerHTML=entries.map((e,i)=>'<div class="live-event '+(highlight&&i===0?'new':'')+'"><span class="live-symbol">'+(e.type==='NFC'?'◉':'▦')+'</span><div><strong>'+e.type+' · '+e.place+'</strong><small>'+e.time+' · '+(e.demo?'Simulación':'Ejemplo')+'</small></div></div>').join('');
+ document.getElementById('liveFeed').innerHTML=entries.map((e,i)=>'<button type="button" class="live-event '+(highlight&&i===0?'new':'')+'" data-event-index="'+i+'"><span class="live-symbol">'+(e.type==='NFC'?'◉':'▦')+'</span><span><strong>'+e.type+' · '+e.place+'</strong><small>'+e.time+' · '+(e.demo?'Simulación':'Ejemplo')+'</small></span></button>').join('');document.querySelectorAll('[data-event-index]').forEach(btn=>btn.addEventListener('click',()=>{const e=entries[Number(btn.dataset.eventIndex)];document.getElementById('eventDetail').textContent=e.type+' · '+e.place+' · '+e.time+' · '+(e.demo?'Evento generado localmente en esta sesión.':'Evento ficticio de ejemplo.')+' No se envió a Supabase.'}));
  document.getElementById('demoEventCount').textContent=simulatedEvents.length+' eventos simulados';
 }
-function drawChart(id,d){const el=document.getElementById(id);if(!el||typeof Chart==='undefined')return;if(charts[id])charts[id].destroy();charts[id]=new Chart(el,{type:'line',data:{labels:d.labels,datasets:[{label:'NFC',data:d.a,borderColor:'#d4aa6a',backgroundColor:'rgba(212,170,106,.09)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18},{label:'QR',data:d.b,borderColor:'#936b49',backgroundColor:'rgba(147,107,73,.08)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#c5b7a7'}},tooltip:{enabled:true,mode:'index',intersect:false,backgroundColor:'#281e16',titleColor:'#f5d29a',bodyColor:'#f1e5d6',borderColor:'#9a7042',borderWidth:1}},scales:{x:{ticks:{color:'#a69a8c'},grid:{color:'#34291f'}},y:{beginAtZero:true,ticks:{color:'#a69a8c'},grid:{color:'#34291f'}}}}})}
-function render(){const d=activeData();document.getElementById('metrics').innerHTML=metricsHtml(d);document.getElementById('statsMetrics').innerHTML=metricsHtml(d);document.getElementById('cardTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeNfc').textContent=d.nfc;document.getElementById('homeQr').textContent=d.qr;document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',Number(b.dataset.period)===period));drawChart('activityChart',d);drawChart('statsChart',d)}
+function drawChart(id,d){const el=document.getElementById(id);if(!el||typeof Chart==='undefined')return;if(charts[id])charts[id].destroy();charts[id]=new Chart(el,{type:'line',data:{labels:d.labels,datasets:[{label:'NFC',data:d.a,borderColor:'#d4aa6a',backgroundColor:'rgba(212,170,106,.09)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18},{label:'QR',data:d.b,borderColor:'#936b49',backgroundColor:'rgba(147,107,73,.08)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18}].filter(ds=>id!=='activityChart'||seriesMode==='both'||ds.label.toLowerCase()===seriesMode)},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#c5b7a7'}},tooltip:{enabled:true,mode:'index',intersect:false,backgroundColor:'#281e16',titleColor:'#f5d29a',bodyColor:'#f1e5d6',borderColor:'#9a7042',borderWidth:1}},scales:{x:{ticks:{color:'#a69a8c'},grid:{color:'#34291f'}},y:{beginAtZero:true,ticks:{color:'#a69a8c'},grid:{color:'#34291f'}}}}})}
+function render(){const d=activeData();document.getElementById('metrics').innerHTML=metricsHtml(d);document.getElementById('statsMetrics').innerHTML=metricsHtml(d);document.getElementById('cardTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeNfc').textContent=d.nfc;document.getElementById('homeQr').textContent=d.qr;document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',Number(b.dataset.period)===period));drawChart('activityChart',d);drawChart('statsChart',d);renderInsights(d);renderReportSummary();renderAlerts()}
 document.getElementById('topCards').innerHTML=cards.slice(0,4).map(c=>'<div style="margin:13px 0"><div class="line"><span>'+c.name+'</span><strong class="gold">'+(c.nfc+c.qr)+' interacciones</strong></div><div class="bar"><span style="width:'+Math.round((c.nfc+c.qr)/116*100)+'%"></span></div></div>').join('');
+document.getElementById('cardPerformance').textContent='Mejor ubicación: '+cards.slice().sort((a,b)=>(b.nfc+b.qr)-(a.nfc+a.qr))[0].name+' · '+(cards[0].nfc+cards[0].qr)+' interacciones de ejemplo. No se dispone de datos de inactividad real.';
 document.getElementById('cardRows').innerHTML=cards.map(c=>'<tr><td><strong>'+c.name+'</strong></td><td>'+c.type+'</td><td>'+c.nfc+'</td><td>'+c.qr+'</td><td>'+(c.nfc+c.qr)+'</td><td><span class="positive">● '+c.status+'</span></td></tr>').join('');
 function go(page){document.querySelectorAll('.section').forEach(s=>s.classList.toggle('active',s.id===page));document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));document.getElementById('pageTitle').textContent=titles[page];if(page==='estadisticas')setTimeout(()=>drawChart('statsChart',activeData()),0);if(page==='inicio')setTimeout(()=>drawChart('activityChart',activeData()),0);window.scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('[data-page],[data-goto]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.page||b.dataset.goto)));document.querySelectorAll('[data-period]').forEach(b=>b.addEventListener('click',()=>{period=Number(b.dataset.period);render();document.querySelectorAll('.metric-tile').forEach(el=>{el.classList.remove('changed');void el.offsetWidth;el.classList.add('changed')})}));
-const reviewEntries=new Map();const today=new Date();const localDay=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');document.getElementById('reviewDay').value=localDay;function reviewUpdate(){const a=document.getElementById('openingCount').value,b=document.getElementById('closingCount').value;const ok=a!==''&&b!==''&&Number.isSafeInteger(Number(a))&&Number.isSafeInteger(Number(b))&&Number(a)>=0&&Number(b)>=0;document.getElementById('reviewDelta').textContent=ok?(Number(b)-Number(a)>0?'+':'')+(Number(b)-Number(a)):'—';document.getElementById('reviewOpenSummary').textContent=a||'—';document.getElementById('reviewCloseSummary').textContent=b||'—';return ok}['openingCount','closingCount'].forEach(id=>document.getElementById(id).addEventListener('input',reviewUpdate));document.getElementById('reviewDay').addEventListener('change',()=>{const e=reviewEntries.get(document.getElementById('reviewDay').value);document.getElementById('openingCount').value=e?e.open:'';document.getElementById('closingCount').value=e?e.close:'';reviewUpdate()});document.getElementById('saveReviewDay').addEventListener('click',()=>{const day=document.getElementById('reviewDay').value;if(!day||!reviewUpdate()){document.getElementById('reviewFeedback').textContent='Elegí una fecha y completá ambos contadores con números enteros no negativos.';return}const open=Number(document.getElementById('openingCount').value),close=Number(document.getElementById('closingCount').value);reviewEntries.set(day,{open,close});document.getElementById('reviewFeedback').textContent='Registro guardado solo en la memoria de esta demostración (se pierde al recargar).';document.getElementById('homeReviewOpen').textContent=open;document.getElementById('homeReviewClose').textContent=close;document.getElementById('homeReviewDelta').textContent=(close-open>0?'+':'')+(close-open);document.getElementById('reviewHistory').innerHTML=[...reviewEntries.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([date,v])=>'<tr><td>'+date+'</td><td>'+v.open+'</td><td>'+v.close+'</td><td>'+(v.close-v.open>0?'+':'')+(v.close-v.open)+'</td></tr>').join('')});document.getElementById('downloadDemo').addEventListener('click',()=>{const rows=[['ubicacion','nfc','qr','total'],...cards.map(c=>[c.name,c.nfc,c.qr,c.nfc+c.qr])];const csv='\uFEFF'+rows.map(r=>r.join(';')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='nq-central-demo-tarjetas.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+
+function renderInsights(d){
+ const top=cards.slice().sort((a,b)=>(b.nfc+b.qr)-(a.nfc+a.qr))[0];
+ const total=d.nfc+d.qr;
+ const share=total?Math.round(d.nfc/total*100):0;
+ const prev=demo[period===1?7:period===7?30:period===30?90:90];
+ const prevDaily=(prev.nfc+prev.qr)/(period===1?7:period===7?30:period===30?90:90);
+ const currentDaily=total/period;
+ const delta=prevDaily?Math.round((currentDaily/prevDaily-1)*100):0;
+ document.getElementById('smartInsights').innerHTML=
+ '<div class="insight"><strong>◉ '+share+' % NFC</strong>De las '+total+' interacciones del período seleccionado, '+d.nfc+' corresponden a NFC.</div>'+
+ '<div class="insight"><strong>⌖ '+top.name+'</strong>Ubicación con más actividad en los datos de ejemplo: '+(top.nfc+top.qr)+' interacciones.</div>'+
+ '<div class="insight"><strong>↗ '+(delta>=0?'+':'')+delta+' %</strong>Promedio diario frente al período de referencia ilustrativo. No representa un cambio real.</div>';
+}
+function renderReportSummary(){
+ const p=Number(document.getElementById('reportPeriod').value);
+ const d=demo[p];
+ document.getElementById('reportSummary').innerHTML='<div class="line"><span>Período</span><strong>'+p+' día(s)</strong></div><div class="line"><span>NFC</span><strong>'+d.nfc+'</strong></div><div class="line"><span>QR</span><strong>'+d.qr+'</strong></div><div class="line"><span>Total</span><strong>'+(d.nfc+d.qr)+'</strong></div><p class="muted">Cifras de ejemplo. Las simulaciones de la sesión se muestran únicamente en el Dashboard.</p>';
+}
+function renderAlerts(){
+ const current=reviewEntries.get(localDay);
+ const alerts=[
+ {title:'Registro diario',body:!current||current.open==null?'Apertura pendiente en esta demostración.':current.close==null?'Cierre pendiente en esta demostración.':'Apertura y cierre registrados en esta sesión.'},
+ {title:'Integración con Google',body:'Pendiente: las reseñas públicas todavía no están conectadas.'},
+ {title:'Actividad de tarjetas',body:'Se muestra actividad ficticia. La detección de tarjetas inactivas requiere datos reales.'}
+ ];
+ document.getElementById('alertsList').innerHTML=alerts.map(a=>'<div class="alert-row"><strong>'+a.title+'</strong><div class="muted">'+a.body+'</div></div>').join('');
+}
+document.getElementById('reportPeriod').addEventListener('change',renderReportSummary);
+document.querySelectorAll('[data-series]').forEach(b=>b.addEventListener('click',()=>{seriesMode=b.dataset.series;document.querySelectorAll('[data-series]').forEach(x=>x.classList.toggle('active',x===b));drawChart('activityChart',activeData())}));
+
+const reviewEntries=new Map();const today=new Date();const localDay=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');document.getElementById('reviewDay').value=localDay;function reviewUpdate(){const a=document.getElementById('openingCount').value,b=document.getElementById('closingCount').value;const ok=a!==''&&b!==''&&Number.isSafeInteger(Number(a))&&Number.isSafeInteger(Number(b))&&Number(a)>=0&&Number(b)>=0;document.getElementById('reviewDelta').textContent=ok?(Number(b)-Number(a)>0?'+':'')+(Number(b)-Number(a)):'—';document.getElementById('reviewOpenSummary').textContent=a||'—';document.getElementById('reviewCloseSummary').textContent=b||'—';return ok}['openingCount','closingCount'].forEach(id=>document.getElementById(id).addEventListener('input',reviewUpdate));document.getElementById('reviewDay').addEventListener('change',()=>{const e=reviewEntries.get(document.getElementById('reviewDay').value);document.getElementById('openingCount').value=e?e.open:'';document.getElementById('closingCount').value=e?e.close:'';reviewUpdate()});function updateDailyReviewView(){
+ const day=document.getElementById('reviewDay').value,entry=reviewEntries.get(day)||{};
+ document.getElementById('openingCount').value=entry.open??'';
+ document.getElementById('closingCount').value=entry.close??'';
+ reviewUpdate();
+ const current=reviewEntries.get(localDay)||{};
+ document.getElementById('homeReviewOpen').textContent=current.open??'—';
+ document.getElementById('homeReviewClose').textContent=current.close??'—';
+ document.getElementById('homeReviewDelta').textContent=current.open!=null&&current.close!=null?(current.close-current.open>0?'+':'')+(current.close-current.open):'—';
+ document.getElementById('dailyReviewStatus').textContent=current.open==null?'Registro de hoy: apertura pendiente':current.close==null?'Registro de hoy: cierre pendiente':'Registro de hoy: completo';
+ document.getElementById('reviewHistory').innerHTML=[...reviewEntries.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([date,v])=>'<tr><td>'+date+'</td><td>'+(v.open??'—')+'</td><td>'+(v.close??'—')+'</td><td>'+(v.open!=null&&v.close!=null?(v.close-v.open>0?'+':'')+(v.close-v.open):'—')+'</td></tr>').join('')||'<tr><td colspan="4">Sin registros guardados</td></tr>';
+ renderAlerts();
+}
+function saveReviewPart(part){
+ const day=document.getElementById('reviewDay').value,field=document.getElementById(part==='open'?'openingCount':'closingCount');
+ const value=field.value;
+ if(!day||value===''||!Number.isSafeInteger(Number(value))||Number(value)<0){document.getElementById('reviewFeedback').textContent='Elegí una fecha e ingresá un número entero no negativo para '+(part==='open'?'apertura':'cierre')+'.';return}
+ const entry=reviewEntries.get(day)||{};
+ entry[part]=Number(value);entry[part+'Time']=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+ reviewEntries.set(day,entry);
+ document.getElementById('reviewFeedback').textContent=(part==='open'?'Apertura':'Cierre')+' guardado a las '+entry[part+'Time']+' (solo durante esta sesión).';
+ updateDailyReviewView();
+}
+document.getElementById('saveOpening').addEventListener('click',()=>saveReviewPart('open'));
+document.getElementById('saveClosing').addEventListener('click',()=>saveReviewPart('close'));
+document.getElementById('saveReviewDay').addEventListener('click',()=>{
+ const open=document.getElementById('openingCount').value,close=document.getElementById('closingCount').value;
+ if(open===''||close===''||!reviewUpdate()){document.getElementById('reviewFeedback').textContent='Completá apertura y cierre con números válidos.';return}
+ saveReviewPart('open');saveReviewPart('close');
+});
+function quickReview(part){go('control');document.getElementById('reviewDay').value=localDay;updateDailyReviewView();document.getElementById(part==='open'?'openingCount':'closingCount').focus()}
+document.getElementById('quickOpening').addEventListener('click',()=>quickReview('open'));
+document.getElementById('quickClosing').addEventListener('click',()=>quickReview('close'));
+document.getElementById('reviewDay').addEventListener('change',updateDailyReviewView);
+updateDailyReviewView();
+function csvEscape(v){const str=String(v??'');return /[;"\\r\\n]/.test(str)?'"'+str.replace(/"/g,'""')+'"':str}
+function downloadCsv(){
+ const p=Number(document.getElementById('reportPeriod').value),d=demo[p];
+ const rows=[['NQ CENTRAL · INFORME DEMO'],['periodo_dias',p],['nfc',d.nfc],['qr',d.qr],['total',d.nfc+d.qr],[],['ubicacion','nfc','qr','total'],...cards.map(c=>[c.name,c.nfc,c.qr,c.nfc+c.qr]),[],['fecha','apertura','cierre','variacion_neta'],...[...reviewEntries.entries()].map(([day,v])=>[day,v.open??'',v.close??'',v.open!=null&&v.close!=null?v.close-v.open:''])];
+ const csv='\\uFEFF'+rows.map(row=>row.map(csvEscape).join(';')).join('\\r\\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='nq-central-informe-demo-'+p+'d.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ document.getElementById('reportFeedback').textContent='CSV de demostración generado. No incluye datos reales.';
+}
+document.getElementById('downloadDemo').addEventListener('click',downloadCsv);
+document.getElementById('printReport').addEventListener('click',()=>{document.getElementById('reportFeedback').textContent='Usá la opción Guardar como PDF del diálogo de impresión.';window.print()});
 // Actualización automática del prototipo: refresca únicamente la vista, no solicita datos externos.
 let lastRefreshTime=null;
 function refreshDashboard(manual=false){
