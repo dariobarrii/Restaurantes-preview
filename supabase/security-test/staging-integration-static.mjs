@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql] = await Promise.all([
+const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigration, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql, dashboardPreflight, rollbackPlan] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
@@ -18,6 +18,8 @@ const [index, card, rpc, issuer, adminFunction, schemaMigration, dashboardMigrat
   readFile("supabase/security/registration-privilege-checks.sql","utf8"),
   readFile("workers/nq-central-card-gateway/wrangler.example.toml","utf8"),
   readFile("supabase/security/historical-event-reconciliation.sql","utf8"),
+  readFile("supabase/security/dashboard-security-preflight.sql","utf8"),
+  readFile("supabase/security/DASHBOARD_SECURITY_ROLLBACK.md","utf8"),
 ]);
 
 test("portal and card use business filtering and server gateway paths", () => {
@@ -162,4 +164,19 @@ test("dashboard permissions revoke direct writes alongside server replacement op
     "nq_central_profile_name_self_update","nq_central_member_review_insert",
     "p.status='approved'","b.status='approved'","has_column_privilege",
   ]) assert.ok(dashboardMigration.includes(sql), sql);
+});
+
+test("dashboard preflight is catalog-only and contains a staged rollback plan", () => {
+  assert.doesNotMatch(dashboardPreflight,/^\\s*(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|TRUNCATE)\\b/im);
+  assert.match(dashboardPreflight,/information_schema\\.columns/);
+  assert.match(dashboardPreflight,/pg_policies/);
+  assert.match(dashboardPreflight,/has_table_privilege/);
+  assert.match(dashboardPreflight,/has_column_privilege/);
+  assert.match(dashboardPreflight,/pg_get_triggerdef/);
+  assert.doesNotMatch(dashboardPreflight,/pg_get_functiondef|\\bprosrc\\b/i);
+  assert.doesNotMatch(dashboardPreflight,/FROM public\\.nfc_events|FROM public\\.app_business_events/i);
+  assert.match(dashboardPreflight,/safe_for_020_preflight/);
+  assert.match(rollbackPlan,/Do not drop columns automatically/);
+  assert.match(rollbackPlan,/do not restore blanket authenticated grants/i);
+  assert.match(dashboardMigration,/m\\.member_role IN \\('owner','manager'\\)/);
 });
