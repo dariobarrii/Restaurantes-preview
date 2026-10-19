@@ -112,3 +112,11 @@ Regresiones reproducidas antes de corregir: CSV con formula, perfil con respuest
 ## Bloque pruebas de navegador y automatizacion
 
 run-local-checks.mjs ahora incluye regresiones administrativas y el modelo de idempotencia; --browser ejecuta solo harness offline explicitos con Playwright/Chrome existentes (sin instalaciones). portal-browser-local.mjs pasa 4 casos reales Chrome y card-browser-smoke.mjs fue sustituido por el flujo scanner/Worker/Edge actual con SQL sustituido: 9 comprobaciones aprobadas. Se elimino de ese harness la ruta antigua directa a otro Supabase. Toda solicitud de aplicacion se intercepta o aborta, sin contactos a staging/Maps/CDN. Ver BROWSER_LOCAL_TESTS.md y results/2026-10-19-launch-local-tests.txt (101 Node + 13 checks browser ejecutados en esa pasada). No prueba RPC SQL, RLS, biblioteca Chart real ni endpoints desplegados.
+
+## Bloque PostgreSQL: condicion previa de fidelidad
+
+No se accedio al Docker del propietario. El precheck del Codespace es evidencia informada por el operador, no comprobada aqui. Se revisaron 020 (defaults/secuencias/RESTART transaccional, nulos sin fechas inventadas) y 021 (grants por columna/RLS/retiro coordinado); no se ejecutaron ni se alteraron sus archivos al no disponer del clon fiel.
+
+Mejora reproducible de automatizacion: export ahora captura source-catalog.json y validate bloquea ANTES de 020 si el catalogo/ACL/RLS restaurado difiere del origen. Incluye ambas app_is_admin en public/private, hash de cuerpo sin exponerlo y ACL canonicas sin depender de OIDs locales. Regresion del gate y 14/14 pruebas especificas aprobadas. EXPLAIN sin ANALYZE del SELECT de snapshot actualizado paso contra staging confirmado por API; no hubo filas de aplicaciones ni SQL de escritura. No se probó restore ni ninguna migracion.
+
+Continuacion exacta: CODESPACE_CONTINUATION.md. Requiere actualizar el checkout conservando cambios, resolver ID del contenedor ya existente, export privado de lectura, retirar conexion remota, aislar y validar. No inventar source-catalog.json ni omitir gates. Se agrega .gitignore para credenciales y artefactos privados; patrones comprobados con git check-ignore sobre nombres ficticios.

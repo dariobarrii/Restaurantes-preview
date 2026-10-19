@@ -103,6 +103,10 @@ export function rolesSql(metadata) {
   return sql.join("\n");
 }
 
+export function compareCatalog(source, restored) {
+  if (JSON.stringify(source) !== JSON.stringify(restored)) throw new Blocked("Restored catalog/ACL/RLS differs from source; migrations have not started.");
+}
+
 export function compareExtensionState(source, restored) {
   if (source.length !== restored.length) throw new Blocked("Restored extension inventory differs from staging.");
   for (const ext of source) if (!restored.some(x => ["name","version","schema","owner"].every(k => x[k] === ext[k]))) throw new Blocked("Restored extension ownership/schema differs from staging.");
@@ -199,6 +203,8 @@ export async function main(mode) {
     const metadata = JSON.parse(docker(c, ["psql","-X","-qAt","-v","ON_ERROR_STOP=1"], metadataSql, "staging-metadata", env));
     writeFileSync(join(c.dir,"roles.sql"),rolesSql(metadata),{mode:0o600});
     writeFileSync(join(c.dir,"metadata.json"),JSON.stringify(metadata),{mode:0o600});
+    const catalog = docker(c,["psql","-X","-qAt","-v","ON_ERROR_STOP=1"],readFileSync("supabase/security-test/postgres-clone-snapshot.sql","utf8"),"source-catalog",env);
+    writeFileSync(join(c.dir,"source-catalog.json"),catalog,{mode:0o600});
     const schema = docker(c, ["pg_dump","--schema-only","--format=plain","--lock-wait-timeout=10000"], undefined, "schema-export", env);
     writeFileSync(join(c.dir,"schema.sql"),schema,{mode:0o600});
     return;
@@ -215,6 +221,8 @@ export async function main(mode) {
   const restoredExtensions = JSON.parse(localSql(c,"SELECT json_agg(json_build_object('name',e.extname,'version',e.extversion,'schema',n.nspname,'owner',pg_get_userbyid(e.extowner)) ORDER BY e.extname) FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace;","restored-extensions"));
   compareExtensionState(metadata.extensions,restoredExtensions);
   const snapshotSql = readFileSync("supabase/security-test/postgres-clone-snapshot.sql","utf8");
+  const sourceCatalog = JSON.parse(readFileSync(join(c.dir,"source-catalog.json"),"utf8"));
+  compareCatalog(sourceCatalog,JSON.parse(localSql(c,snapshotSql,"restored-before-migrations")));
   for (const migration of ["020_add_nullable_dashboard_fields.sql","021_restrict_dashboard_mutations.sql"]) {
     const sql = readFileSync("supabase/migrations/" + migration);
     localSql(c,sql,migration + "-first","postgres");

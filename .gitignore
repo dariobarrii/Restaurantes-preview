@@ -1,0 +1,10 @@
+# Local credentials and private PostgreSQL validation artifacts.
+.env
+.env.*
+!.env.example
+!.env.template
+.pgpass
+**/*.private.log
+**/nq-postgres-validation/
+**/nq-central-staging-schema.sql
+**/staging-ca.pem

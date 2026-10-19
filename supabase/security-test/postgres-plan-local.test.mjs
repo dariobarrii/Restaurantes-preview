@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { validateStagingUrl, rolesSql, requireExtensions, PROJECT_REF, approvedImage, checkRunner, compareRuntime, assertSandbox, compareExtensionState } from "./postgres-validation.mjs";
+import { validateStagingUrl, rolesSql, requireExtensions, PROJECT_REF, approvedImage, checkRunner, compareRuntime, assertSandbox, compareExtensionState, compareCatalog } from "./postgres-validation.mjs";
 
 test("export target is restricted to staging, session connections and verified TLS", () => {
   assert.equal(validateStagingUrl(`postgresql://readonly:unit-placeholder@db.${PROJECT_REF}.supabase.co:5432/postgres?sslmode=verify-full`).hostname, `db.${PROJECT_REF}.supabase.co`);
@@ -112,4 +112,15 @@ test("export implementation guards private files and column/schema write privile
  const source=await readFile("supabase/security-test/postgres-validation.mjs","utf8");
  for(const guard of ["realpathSync(process.env.RUNNER_TEMP)","entry.isSymbolicLink()","entry.mode & 0o077","has_any_column_privilege","has_schema_privilege"]) assert.ok(source.includes(guard));
  assert.doesNotMatch(source,/pg_authid|rolpassword/);
+});
+
+
+test("migrations are blocked until the restored source catalog matches",async()=>{
+ assert.doesNotThrow(()=>compareCatalog({rls:true,acl:["unit"]},{rls:true,acl:["unit"]}));
+ assert.throws(()=>compareCatalog({rls:true},{rls:false}));
+ const script=await readFile("supabase/security-test/postgres-validation.mjs","utf8");
+ assert.ok(script.indexOf('compareCatalog(sourceCatalog,')<script.indexOf('for (const migration of ['));
+ const snapshot=await readFile("supabase/security-test/postgres-clone-snapshot.sql","utf8");
+ assert.ok(snapshot.includes("n.nspname IN ('public','private')"));
+ assert.doesNotMatch(snapshot,/ORDER BY p.proname,p.oid/);
 });
