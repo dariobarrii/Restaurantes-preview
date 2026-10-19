@@ -7,6 +7,7 @@ const upstream = "https://stage-project.supabase.co/functions/v1/register-busine
 const makeEnv = (overrides = {}) => ({
   RATE_LIMITER: { limit: async () => ({ success: true }) },
   SUPABASE_FUNCTION_URL: upstream,
+  STAGING_PROJECT_REF: "stage-project",
   NQ_GATEWAY_SHARED_SECRET: "test-only-secret",
   ALLOWED_ORIGINS: origin,
   ...overrides,
@@ -63,7 +64,7 @@ test("fails closed when client identity or limiter is unavailable", async () => 
 
 test("rejects unsafe or wrong upstream configuration", async () => {
   const response = await worker.fetch(request(), makeEnv({
-    SUPABASE_FUNCTION_URL: "https://production.example.invalid/functions/v1/unrelated",
+    SUPABASE_FUNCTION_URL: "https://production.example.invalid/functions/v1/register-business-card-event",
   }));
   assert.equal(response.status, 503);
 });
