@@ -16,7 +16,7 @@ Review supabase/security/registration-privilege-checks.sql manually and run it o
 - anon/authenticated INSERT=false on app_business_events and nfc_events;
 - inspect RLS and remaining SELECT/UPDATE privileges against the actual portal behavior.
 
-The migration contains post-change assertions, but they have not been run. These checks do not prove runtime isolation by themselves.
+Migration 010's token-table policy also references public.app_is_admin(). The accessible source did not establish its definition or deployed ACL, and this branch does not change it; the catalog query lists all SECURITY DEFINER functions, including app_is_admin if present. Verify its status and required policy execution access in staging. The migration contains post-change assertions, but they have not been run. These checks do not prove runtime isolation by themselves.
 
 ## Rate limits
 
