@@ -16,6 +16,8 @@ WITH target_functions AS (
 SELECT f.schema_name,
        f.identity,
        pg_catalog.pg_get_userbyid(p.proowner) AS function_owner,
+       owner_role.rolsuper AS owner_is_superuser,
+       owner_role.rolbypassrls AS owner_bypasses_rls,
        f.prosecdef AS security_definer,
        EXISTS (
          SELECT 1
@@ -37,6 +39,7 @@ SELECT f.schema_name,
        pg_catalog.has_function_privilege('service_role',f.oid,'EXECUTE') AS service_role_can_execute
 FROM target_functions f
 JOIN pg_catalog.pg_proc p ON p.oid=f.oid
+JOIN pg_catalog.pg_roles owner_role ON owner_role.oid=p.proowner
 ORDER BY f.schema_name,f.identity;
 
 -- Effective schema access needed for private.app_is_admin() in RLS policies.
