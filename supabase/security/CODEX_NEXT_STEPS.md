@@ -150,3 +150,15 @@ The fixture command changes only its marker-scoped staging test rows and Auth us
 ### Still blocked
 - Product manage-business-administration, manage-business-card-token, and register-business-card-event are not deployed to staging; no full card lifecycle, gateway, rate-limit, replay, or NFC/QR redirect test can pass until a reviewed deployment exists.
 - 020/021 remain subject to manual preflight/SQL review and explicit execution authorization. No launch or staging-security completion claim is made.
+
+
+
+## Latest verification record
+
+- Confirmed again that ref rxxbmqilnozcnpwguqga resolves to NQ Central Security Test (ACTIVE_HEALTHY, eu-west-1); no other Supabase project was accessed.
+- Read-only schema metadata confirms app_business_events.id and app_business_review_snapshots.id are bigint columns without defaults. The fixture therefore supplies reserved numeric IDs, refuses collisions, and validates the row markers again before cleanup.
+- Final static source suite: 18/18 passed. The test cases were executed sequentially in an isolated Node REPL against the exact branch file snapshot; the standard node --test command was not available in this environment.
+- Gateway Worker suite: 9/9 passed in an isolated Node REPL using temporary copies of the two branch files. This is a local code test, not a deployed Worker test.
+- Fixture module parse/guard check passed: import with no credentials stopped at the expected missing-environment guard before any API request. No fixture setup or cleanup call was made.
+- A static assertion initially expected business-ID cleanup text after cleanup had been tightened to explicit row IDs; that assertion was corrected, and the complete static suite then passed 18/18.
+- No rows, permissions, migration state, or deployed functions were modified. No end-to-end staging acceptance or tenant-isolation result is claimed.
