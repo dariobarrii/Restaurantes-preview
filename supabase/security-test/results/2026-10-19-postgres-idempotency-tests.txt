@@ -1,0 +1,29 @@
+✔ MODEL concurrent repeats of one attempt generate one event only (2.7785ms)
+✔ MODEL retries after the rate window still reuse the original event (0.3267ms)
+✔ MODEL new visits have new IDs and remain separately rate limited (0.2329ms)
+✔ MODEL token revocation, pause, archive and approval override replay caches (0.3834ms)
+✔ MODEL rotated credentials cannot reuse an old attempt under a new generation (0.2361ms)
+✔ MODEL changing payload for the same request ID causes a conflict (0.228ms)
+✔ MODEL same request ID across two cards does not mix businesses or channels (1.0231ms)
+✔ MODEL failed requests do not reserve an ID or register an event (0.2218ms)
+✔ MODEL unsafe current destinations are rejected even on a valid replay (0.271ms)
+✔ export target is restricted to staging, session connections and verified TLS (2.9572ms)
+✔ role preparation preserves owner attributes and refuses sensitive settings (0.9626ms)
+✔ missing extension versions block faithful restoration (0.2817ms)
+✔ workflow is manual-only, fixed to integration and never uploads dumps (10.3816ms)
+✔ prepared idempotency snapshots include RLS, functions, triggers and default ACLs (1.2337ms)
+✔ only explicit Codespace authorization and the actual approved checkout pass (0.5676ms)
+✔ approved extension image must be from the reviewed distribution and pinned (0.3806ms)
+✔ database settings are recreated only for the local database and unknown settings block (0.4404ms)
+✔ same major and extensions alone cannot pass differing locale or preload gates (0.3354ms)
+✔ only a marked sandbox without ports/mounts can be restored offline (0.4148ms)
+✔ extension availability cannot hide restored ownership/schema differences (0.2836ms)
+✔ database ACL preparation preserves grantor and grant options without CREATE DATABASE reconnects (0.1722ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 132.6362
