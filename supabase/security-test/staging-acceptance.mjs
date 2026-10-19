@@ -152,9 +152,15 @@ async function ensureUser(label) {
   fixtureUserIds.add(user.id);
   const userName = label === "owner" ? "Fixture Owner" : "Fixture Viewer";
   const priorProfile = await readRows("app_profiles", "select=user_id,full_name,role,status,email&user_id=eq." + user.id);
-  if (priorProfile.length > 1 || (priorProfile.length === 1 && (
-      (wasExisting && (priorProfile[0].full_name !== userName || priorProfile[0].role !== "restaurant" || priorProfile[0].status !== "approved" || priorProfile[0].email?.toLowerCase() !== email)) ||
-      (!wasExisting && (priorProfile[0].role !== "restaurant" || !["pending","approved"].includes(priorProfile[0].status) || priorProfile[0].email?.toLowerCase() !== email)))) {
+  const profileMismatch = priorProfile.length > 1 || (priorProfile.length === 1 && (
+    wasExisting
+      ? priorProfile[0].full_name !== userName || priorProfile[0].role !== "restaurant" ||
+        priorProfile[0].status !== "approved" || priorProfile[0].email?.toLowerCase() !== email
+      : priorProfile[0].role !== "restaurant" ||
+        !["pending", "approved"].includes(priorProfile[0].status) ||
+        priorProfile[0].email?.toLowerCase() !== email
+  ));
+  if (profileMismatch) {
     throw new Error("Fixture profile precondition mismatch; refusing to overwrite a changed or unrelated profile.");
   }
   await upsert("app_profiles", [{
