@@ -55,7 +55,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.app_businesses TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
 REVOKE MAINTAIN ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON TABLE public.app_business_cards TO authenticated;
+-- Browser clients do not need card rows; token validation is the only public lookup.
 GRANT SELECT, INSERT, UPDATE ON TABLE public.app_business_cards TO service_role;
 
 -- Profile self-service may change only full_name. Role and approval status are
