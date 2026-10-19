@@ -37,6 +37,20 @@ main{padding:27px 24px;max-width:1600px}
 @media(max-width:1120px){.layout{grid-template-columns:210px minmax(0,1fr)}.metric-tile .label,.metric-tile .number,.metric-tile .positive{margin-left:0}.metric-icon{position:static;margin-bottom:8px}.review-stat{padding:12px}}
 @media(max-width:800px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;padding:12px}.brand{font-size:24px}.brand small{font-size:10px}.brand:after{display:none}.business-switch{margin-top:10px}.nav{margin-top:12px}.sidebar-foot{display:none}main{padding:17px 12px}.title{font-size:27px}.top{align-items:center}.review-feature .review-grid{grid-template-columns:1fr}.review-stat{min-height:auto}.review-stat .number{font-size:30px}.grid2{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-tile{min-height:115px}.metric-tile .number{font-size:28px}.metric-tile .label{font-size:11px}.metric-icon{width:32px;height:32px;font-size:16px}.top .muted{font-size:12px}}
 @media(max-width:390px){.metrics{gap:7px}.metric-tile{padding:12px}.metric-tile .number{font-size:24px}.review-feature{padding:9px}.review-feature h3{font-size:18px}}
+</style><style>
+/* Tipografía numérica aprobada: sans-serif moderna y legible */
+.number,.metric-tile .number,.review-stat .number,.review-stat .positive,.activity-total strong,
+#homeTotal,#homeNfc,#homeQr,#homeReviewOpen,#homeReviewClose,#homeReviewDelta,
+#reviewDelta,#reviewOpenSummary,#reviewCloseSummary,#cardTotal,
+table td:not(:first-child){
+  font-family:"DM Sans",sans-serif!important;
+  font-variant-numeric:tabular-nums lining-nums;
+  font-feature-settings:"tnum" 1,"lnum" 1;
+  letter-spacing:-.055em;
+}
+.metric-tile .number,.review-stat .number{font-weight:700;line-height:1.15}
+.review-stat .positive{font-weight:700;line-height:1.15}
+.activity-total strong{font-weight:700;letter-spacing:-.045em}
 </style></head><body>
 <div class="layout"><aside class="sidebar"><div class="brand">NQ CENTRAL<small>PORTAL DE CLIENTES</small></div><div class="business-switch">◉ &nbsp; La Terraza <small>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Restaurante · Ejemplo</small></div><nav class="nav" aria-label="Navegación principal">
 <button class="active" data-page="inicio">⌂ &nbsp; Resumen</button><button data-page="estadisticas">▥ &nbsp; Estadísticas NFC/QR</button><button data-page="tarjetas">▣ &nbsp; Tarjetas y ubicaciones</button><button data-page="resenas">G &nbsp; Reseñas de Google</button><button data-page="control">☆ &nbsp; Apertura y cierre</button><button data-page="informes">▤ &nbsp; Informes</button><button data-page="perfil">⚙ &nbsp; Configuración</button></nav><div class="sidebar-foot">NQ Central · Vista de demostración</div></aside>
