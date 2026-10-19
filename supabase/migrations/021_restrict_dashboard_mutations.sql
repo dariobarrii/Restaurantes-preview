@@ -40,11 +40,79 @@ BEGIN
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='app_business_members' AND column_name='member_role')
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='app_business_review_snapshots' AND column_name='source') THEN
-    RAISE EXCEPTION 'One or more required dashboard columns are missing';
+    WHERE table_schema='public' AND table_name='app_business_review_snapshots' AND column_name='source'
+      AND data_type='text' AND column_default LIKE '%manual%')
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='app_business_review_snapshots' AND column_name='captured_at'
+      AND column_default IS NOT NULL)
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='app_business_review_snapshots' AND column_name='id'
+      AND data_type='bigint') THEN
+    RAISE EXCEPTION 'One or more required dashboard columns or safe review defaults are missing';
   END IF;
 END
 $preflight$;
+
+-- The portal inserts only business_id, platform, and review_count. Ensure
+-- generated review IDs have a safe default even on staging schemas where the
+-- original identity/serial default was omitted. Preserve the existing sequence
+-- and advance it beyond every existing ID; no row values are changed.
+DO $review_id_sequence$
+DECLARE
+  v_sequence text;
+  v_default text;
+  v_max_id bigint;
+  v_last_value bigint;
+  v_is_called boolean;
+  v_next_value bigint;
+BEGIN
+  v_sequence := pg_catalog.pg_get_serial_sequence(
+    'public.app_business_review_snapshots', 'id'
+  );
+  SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+    INTO v_default
+  FROM pg_catalog.pg_attrdef d
+  JOIN pg_catalog.pg_attribute a ON a.attrelid=d.adrelid AND a.attnum=d.adnum
+  WHERE d.adrelid='public.app_business_review_snapshots'::regclass
+    AND a.attname='id';
+
+  IF v_sequence IS NULL THEN
+    IF v_default IS NOT NULL THEN
+      RAISE EXCEPTION 'Review id has an unmanaged default; inspect it before applying migration 021';
+    END IF;
+    IF pg_catalog.to_regclass('public.app_business_review_snapshots_id_seq') IS NOT NULL THEN
+      RAISE EXCEPTION 'Review ID sequence name is already occupied; inspect it before applying migration 021';
+    END IF;
+    CREATE SEQUENCE public.app_business_review_snapshots_id_seq;
+    ALTER SEQUENCE public.app_business_review_snapshots_id_seq
+      OWNED BY public.app_business_review_snapshots.id;
+    ALTER TABLE public.app_business_review_snapshots
+      ALTER COLUMN id SET DEFAULT nextval('public.app_business_review_snapshots_id_seq'::regclass);
+    v_sequence := pg_catalog.pg_get_serial_sequence(
+      'public.app_business_review_snapshots', 'id'
+    );
+  END IF;
+
+  EXECUTE 'SELECT COALESCE(max(id),0) FROM public.app_business_review_snapshots'
+    INTO v_max_id;
+  EXECUTE pg_catalog.format('SELECT last_value, is_called FROM %s', v_sequence::regclass)
+    INTO v_last_value, v_is_called;
+  v_next_value := greatest(
+    v_max_id,
+    CASE WHEN v_is_called THEN v_last_value ELSE v_last_value - 1 END
+  ) + 1;
+  PERFORM pg_catalog.setval(v_sequence::regclass, v_next_value, false);
+
+  EXECUTE pg_catalog.format(
+    'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
+    v_sequence::regclass
+  );
+  EXECUTE pg_catalog.format(
+    'GRANT USAGE ON SEQUENCE %s TO authenticated, service_role',
+    v_sequence::regclass
+  );
+END
+$review_id_sequence$;
 
 -- Browser clients keep scoped reads; all business/card writes go through the
 -- authenticated management Edge Function using its server-side service role.
@@ -74,7 +142,11 @@ GRANT SELECT ON TABLE public.app_business_events TO authenticated;
 GRANT SELECT ON TABLE public.app_business_events TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_review_snapshots FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT ON TABLE public.app_business_review_snapshots TO authenticated;
+GRANT SELECT ON TABLE public.app_business_review_snapshots TO authenticated;
+-- The client may submit only the tenant, capture kind, and manually observed
+-- count. id/captured_at/source are generated or fixed by server-side defaults.
+GRANT INSERT (business_id, platform, review_count)
+  ON TABLE public.app_business_review_snapshots TO authenticated;
 GRANT SELECT ON TABLE public.app_business_review_snapshots TO service_role;
 
 -- Add administrator read access without broadening member rows. Existing
@@ -126,6 +198,7 @@ CREATE POLICY nq_central_member_review_insert ON public.app_business_review_snap
     )
     AND platform IN ('Google apertura','Google cierre')
     AND source='manual'
+    AND review_count >= 0
   );
 
 DO $verify$
@@ -199,5 +272,52 @@ BEGIN
   END IF;
 END
 $verify$;
+
+DO $verify_restricted_acl$
+DECLARE
+  t text;
+  r text;
+  p text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_businesses','app_business_cards','app_profiles','app_business_members',
+    'app_business_events','app_business_review_snapshots'
+  ] LOOP
+    FOREACH r IN ARRAY ARRAY['anon','authenticated'] LOOP
+      FOREACH p IN ARRAY ARRAY[
+        'INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','MAINTAIN'
+      ] LOOP
+        IF pg_catalog.has_table_privilege(r, 'public.' || t, p) THEN
+          RAISE EXCEPTION 'Unexpected effective % privilege for % on public.%', p, r, t;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+
+  IF NOT pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','business_id','INSERT')
+     OR NOT pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','platform','INSERT')
+     OR NOT pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','review_count','INSERT')
+     OR pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','id','INSERT')
+     OR pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','captured_at','INSERT')
+     OR pg_catalog.has_column_privilege(
+       'authenticated','public.app_business_review_snapshots','source','INSERT') THEN
+    RAISE EXCEPTION 'Review snapshot INSERT columns do not match the client capture flow';
+  END IF;
+
+  IF pg_catalog.has_sequence_privilege(
+       'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'USAGE')
+     OR NOT pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'USAGE') THEN
+    RAISE EXCEPTION 'Review ID sequence privileges do not match the portal insert flow';
+  END IF;
+END
+$verify_restricted_acl$;
 
 COMMIT;
