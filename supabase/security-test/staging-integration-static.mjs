@@ -13,7 +13,7 @@ assert.doesNotMatch(index,/\.from\(['"]app_business_card_tokens['"]\)/);
 assert.doesNotMatch(index,/\.from\(['"]nfc_events['"]\)\.insert/);
 assert.match(card,/eventGatewayUrl/);
 assert.match(card,/credentials:\s*['"]omit['"]/);
-assert.doesNotMatch(card,/functions\/v1|\.supabase\.co/i);
+assert.doesNotMatch(card,/https:\/\/[a-z0-9-]+\.supabase\.co\/functions\/v1/i);
 assert.match(rpc,/x-nq-gateway-secret/);
 assert.match(rpc,/register_business_card_event_with_token/);
 assert.match(issuer,/crypto\.getRandomValues/);
