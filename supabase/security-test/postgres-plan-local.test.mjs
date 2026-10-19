@@ -123,4 +123,5 @@ test("migrations are blocked until the restored source catalog matches",async()=
  const snapshot=await readFile("supabase/security-test/postgres-clone-snapshot.sql","utf8");
  assert.ok(snapshot.includes("n.nspname IN ('public','private')"));
  assert.doesNotMatch(snapshot,/ORDER BY p.proname,p.oid/);
+ assert.ok(snapshot.includes("'nfc_events','app_business_card_tokens'"));
 });
