@@ -11,7 +11,7 @@ DECLARE
   matched_card_id uuid;
   name_match_count bigint;
 BEGIN
-  IF NEW.event NOT IN ('nfc_tap', 'qr_scan') THEN
+  IF NEW.event NOT IN ('nfc_tap', 'qr_scan') OR NEW.created_at IS NULL THEN
     RETURN NEW;
   END IF;
 
@@ -37,10 +37,14 @@ BEGIN
   INSERT INTO public.app_business_events
     (business_id, event_type, created_at, source, device_type, legacy_event_id, card_id)
   VALUES
-    (target_business_id, NEW.event, COALESCE(NEW.created_at, pg_catalog.now()),
+    (target_business_id, NEW.event, NEW.created_at,
      'legacy_nfc_events', NEW.device_type, NEW.id, matched_card_id)
   ON CONFLICT (legacy_event_id) WHERE legacy_event_id IS NOT NULL DO NOTHING;
 
   RETURN NEW;
 END;
 $function$;
+
+-- This trigger function is internal; client roles must not call it as an RPC.
+REVOKE EXECUTE ON FUNCTION public.mirror_legacy_nfc_event_to_business()
+  FROM PUBLIC, anon, authenticated;
