@@ -41,6 +41,20 @@ BEGIN
 END
 $preflight$;
 
+DO $duplicate_preflight$
+BEGIN
+  IF EXISTS (
+    SELECT legacy_event_id
+    FROM public.app_business_events
+    WHERE legacy_event_id IS NOT NULL
+    GROUP BY legacy_event_id
+    HAVING pg_catalog.count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'Duplicate legacy_event_id values exist; reconcile staging rows before creating the unique index';
+  END IF;
+END
+$duplicate_preflight$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS app_business_events_legacy_event_id_uidx
   ON public.app_business_events (legacy_event_id)
   WHERE legacy_event_id IS NOT NULL;
