@@ -1,5 +1,7 @@
 -- Local disposable clone only. Catalog/ACL snapshot; no application rows.
 SELECT jsonb_build_object(
+  'database_acl',(SELECT jsonb_build_array(pg_get_userbyid(datdba),datacl::text) FROM pg_database WHERE datname=current_database()),
+  'extensions',(SELECT jsonb_agg(jsonb_build_array(e.extname,e.extversion,n.nspname,pg_get_userbyid(e.extowner)) ORDER BY e.extname) FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace),
   'rls',(SELECT jsonb_agg(jsonb_build_array(c.relname,c.relrowsecurity,c.relforcerowsecurity,pg_get_userbyid(c.relowner)) ORDER BY c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')),
   'sensitive_functions',(SELECT jsonb_agg(jsonb_build_array(p.proname,pg_get_function_identity_arguments(p.oid),p.prosecdef,pg_get_userbyid(p.proowner),r.rolname,has_function_privilege(r.oid,p.oid,'EXECUTE')) ORDER BY p.proname,p.oid,r.rolname) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace CROSS JOIN pg_roles r WHERE n.nspname='public' AND p.proname IN ('app_is_admin','consume_business_card_rate_limit','register_business_card_event_with_token','mirror_legacy_nfc_event_to_business') AND r.rolname IN ('anon','authenticated','service_role')),
   'triggers',(SELECT jsonb_agg(jsonb_build_array(c.relname,t.tgname,t.tgenabled,pg_get_userbyid(p.proowner),p.proname) ORDER BY c.relname,t.tgname) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid WHERE n.nspname='public' AND NOT t.tgisinternal),

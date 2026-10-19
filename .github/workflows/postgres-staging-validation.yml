@@ -32,12 +32,13 @@
             "POSTGRES_DB": "nq_validation",
             "POSTGRES_HOST_AUTH_METHOD": "trust"
           },
-          "options": "--health-cmd \"pg_isready -U nq_ci_bootstrap -d nq_validation\" --health-interval 5s --health-timeout 5s --health-retries 12"
+          "options": "--health-cmd \"pg_isready -U nq_ci_bootstrap -d nq_validation\" --health-interval 5s --health-timeout 5s --health-retries 12 --label nq.central.validation=staging-schema-only"
         }
       },
       "env": {
         "NQ_PG_CONTAINER": "${{ job.services.postgres.id }}",
-        "NQ_APPROVED_POSTGRES_DIGEST": "${{ vars.NQ_APPROVED_POSTGRES_DIGEST }}"
+        "NQ_APPROVED_POSTGRES_DIGEST": "${{ vars.NQ_APPROVED_POSTGRES_DIGEST }}",
+        "NQ_APPROVED_POSTGRES_IMAGE": "${{ vars.NQ_APPROVED_POSTGRES_IMAGE }}"
       },
       "steps": [
         {
@@ -57,6 +58,10 @@
             "NQ_STAGING_CA_PEM": "${{ secrets.NQ_STAGING_CA_PEM }}"
           },
           "run": "node supabase/security-test/postgres-validation.mjs export"
+        },
+        {
+          "name": "Disconnect sandbox networking before restoring SQL",
+          "run": "node supabase/security-test/postgres-validation.mjs isolate"
         },
         {
           "name": "Restore actual schema and run 020/021 twice only in local container",

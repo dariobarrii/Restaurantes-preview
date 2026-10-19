@@ -36,3 +36,9 @@ La restauración conserva atributos del propietario: postgres de staging no es s
 ## Revision de esta continuacion
 
 Se amplio el snapshot local con flags RLS, permisos EXECUTE/propietarios/SECURITY DEFINER, triggers y ACL por defecto. La prueba local solo verifica que esas comprobaciones estan preparadas; no parsea ni ejecuta SQL. El entorno sigue sin PostgreSQL/Docker/WSL instalado ni exportacion fiel. Restaurar membresias con GRANTED BY puede requerir ordenar dependencias administrativas reales: cualquier error debe bloquear, sin quitar grantors ni elevar el propietario. No se ejecuto el workflow. La validacion de 020/021 sigue pendiente.
+
+## Decision actualizada: Codespace temporal, no Actions
+
+Ver POSTGRES_UNBLOCK_DECISION.md. Se recomienda una unica ruta: Codespace desde esta rama, sujeto a cuota gratuita y bloqueo efectivo de gastos, autorizacion externa, imagen oficial Supabase PG17.11 por digest y exportacion privada fiel. No se creo ni ejecuto. El workflow Actions queda como alternativa experimental sin ejecucion; su servicio vanilla y entrypoint no resuelven la clonacion Supabase y requieren revision antes de usarlo. No modificar main para desbloquearlo.
+
+El script acepta Codespaces solo con autorizacion explicita y verificacion real de rama/origin. Preserva ajustes/ACL de base (que pg_dump sin --create omite), compara ICU/preloads y propietarios de extensiones. Nuevos gates detectan problemas en vez de asumir fidelidad. isolar la red exige contenedor marcado, sin puertos ni binds. Ningun gate tiene evidencia Docker/PostgreSQL ejecutada. Se verificaron en staging unicamente dependencias/locale por SELECT, no el dump ni privilegios de un exportador existente.
