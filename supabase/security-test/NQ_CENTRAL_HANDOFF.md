@@ -62,3 +62,11 @@ Commits remotos publicados únicamente en la rama autorizada:
 - 6570e5d8f62a8f5efa1f6dc420f1aa2e03a9ba3a: credenciales, respuestas del registro, scanner, 66 pruebas y aceptación preparada.
 
 Este relevo se guarda en un commit documental posterior; resolver HEAD en GitHub antes de continuar. Árboles remotos comparados con los commits locales revisados, sin sobrescribir cambios posteriores. No hubo consultas nuevas ni escrituras en Supabase durante esta continuación; los tres preflights pertenecen al informe previo.
+
+## Continuacion critica: administracion y perfil
+
+Base remota verificada: 65cea5ce888885598f2a69f658af2804d7d58d9c. PostgreSQL/psql/pg_dump/Docker siguen sin estar disponibles; wsl.exe existe pero confirma que el subsistema no esta instalado. No se instalaron herramientas ni se ejecuto SQL. Actions sigue preparado y bloqueado por autorizacion/requisitos del plan.
+
+Corregida lectura administrativa truncada con caps inferiores a 1000: count exacto obligatorio, offsets segun filas recibidas, clave unica/orden estable y rechazo de conteos variables/duplicados/truncamiento/mas de 50.000. No representa snapshot transaccional: cambios concurrentes deben reintentarse. Se mantienen las respuestas de consumidores, con id adicional en eventos/reseñas para paginacion. Los diez actions rechazan usuarios no aprobados/no admin antes de operar; autoaprobacion y campo role rechazados por pruebas del handler real con cliente sustituido. Tambien se comprueba application/json y longitud de bearer.
+
+Perfil: una actualizacion sin filas podia presentarse como exito y cambiar metadata aunque RLS impidiera el cambio de perfil. Ahora requiere SELECT de user_id/full_name y confirmacion de la fila exacta antes de metadata. Compatible con UPDATE(full_name) y SELECT previstos en 021; requiere prueba RLS real. Regresiones reproducidas antes del cambio (2 lecturas administrativas y 2 casos de perfil), despues 34/34 admin+estaticas y 3/3 perfil aprobadas. Sin escrituras ni fixtures de staging.

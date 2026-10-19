@@ -139,7 +139,7 @@ test("nullable schema fields and panel fallbacks preserve unknown legacy values"
   assert.ok(index.includes("categoryNames[x.category]||x.category||'Sin categoría'"));
   assert.ok(index.includes("x.label||'Tarjeta sin nombre'"));
   assert.ok(!index.includes("target_url,status,created_at"));
-  assert.match(adminFunction,/from\("app_business_cards"\)\.select\("id,business_id,label,channel,target_url,status,archived_at"\)/);
+  assert.match(adminFunction,/from\("app_business_cards"\)\.select\("id,business_id,label,channel,target_url,status,archived_at", \{ count: "exact" \}\)/);
   assert.doesNotMatch(adminFunction,/from\("app_business_cards"\)\.select\("[^"]*created_at/);
 });
 
@@ -189,7 +189,7 @@ test("each dashboard mutation validates identifiers, allowed fields, and authori
 
 
 test("profile reads use bounded pagination and archived cards cannot be reactivated", () => {
-  assert.ok(adminFunction.includes(`select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to)`));
+  assert.ok(adminFunction.includes(`select("user_id,status,role,created_at,full_name", { count: "exact" }).order("created_at",{ascending:false}).order("user_id").range(from, to)`));
   assert.ok(adminFunction.includes(`select("id,archived_at").eq("id", input.id).maybeSingle()`));
   assert.ok(adminFunction.includes(`error: "card_archived"`));
   assert.ok(adminFunction.includes(`error: "admin_read_failed"`));

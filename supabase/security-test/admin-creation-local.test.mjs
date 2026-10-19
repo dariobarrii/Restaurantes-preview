@@ -121,3 +121,33 @@ test("streamed administrative bodies over 8192 bytes return HTTP 413", async () 
   assert.equal(result.body.error, "request_too_large");
   assert.equal(fixture.inserts.length, 0);
 });
+
+
+test("every administrative action denies unapproved and non-admin users before data access", async () => {
+  for (const action of ["dashboard","profiles","business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update","cards"]) {
+    for (const profile of [{role:"restaurant",status:"approved"},{role:"admin",status:"pending"}]) {
+      const f=handlerFor({profile});const result=await f.invoke({action});
+      assert.equal(result.status,403,action);assert.equal(f.inserts.length,0);
+    }
+  }
+});
+
+test("self-approval and role promotion are rejected by the real admin handler", async () => {
+  const f=handlerFor();
+  assert.equal((await f.invoke({action:"profile_status",user_id:businessId,status:"approved"})).status,400);
+  assert.equal((await f.invoke({action:"profile_status",user_id:generatedId,status:"approved",role:"admin"})).status,400);
+});
+
+function reader() {
+  const context={};new Script(javascript.slice(0,javascript.indexOf("Deno.serve"))).runInNewContext(context);
+  return context.readAllRows;
+}
+test("administrative reads do not truncate when the API cap is below 1000", async () => {
+  const all=Array.from({length:1201},(_,id)=>({id}));const offsets=[];
+  const rows=await reader()(async from=>{offsets.push(from);return{data:all.slice(from,from+200),count:all.length,error:null}});
+  assert.equal(rows.length,1201);assert.deepEqual(offsets,[0,200,400,600,800,1000,1200]);
+});
+test("administrative reads reject missing counts, truncation, duplicates and count changes",async()=>{
+  for(const response of [{data:[],count:2},{data:[{id:1}],count:null},{data:[{id:1},{id:1}],count:2},{data:[],count:50001}]) await assert.rejects(reader()(async()=>response));
+  let page=0;await assert.rejects(reader()(async()=>++page===1?{data:[{id:1}],count:2}:{data:[{id:2}],count:3}));
+});

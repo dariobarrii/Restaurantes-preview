@@ -27,18 +27,29 @@ const MAX_ADMIN_RESULT_ROWS = 50000;
 
 async function readAllRows(buildPage: (from: number, to: number) => any): Promise<any[]> {
   const rows: any[] = [];
-  for (let from = 0; from < MAX_ADMIN_RESULT_ROWS; from += ADMIN_PAGE_SIZE) {
+  const seen = new Set<string>();
+  let expected: number | null = null;
+  while (true) {
+    const from = rows.length;
     const to = Math.min(from + ADMIN_PAGE_SIZE - 1, MAX_ADMIN_RESULT_ROWS - 1);
     let result;
     try { result = await buildPage(from, to); }
     catch { throw new AdminReadError(); }
-    const { data, error } = result;
-    if (error) throw new AdminReadError();
-    const page = Array.isArray(data) ? data : [];
-    rows.push(...page);
-    if (page.length < ADMIN_PAGE_SIZE) return rows;
+    const { data, error, count } = result;
+    if (error || !Array.isArray(data) || !Number.isSafeInteger(count) || count < 0) throw new AdminReadError();
+    if (count > MAX_ADMIN_RESULT_ROWS) throw new ResultLimitError();
+    if (expected !== null && expected !== count) throw new AdminReadError();
+    expected = count;
+    for (const row of data) {
+      const id = row.id ?? row.user_id;
+      if (id === undefined || id === null || seen.has(String(id))) throw new AdminReadError();
+      seen.add(String(id));
+    }
+    rows.push(...data);
+    if (rows.length > expected) throw new AdminReadError();
+    if (rows.length === expected) return rows;
+    if (data.length === 0) throw new AdminReadError();
   }
-  throw new ResultLimitError();
 }
 
 function safeTarget(value: unknown): string | null {
@@ -95,6 +106,8 @@ Deno.serve(async (req: Request) => {
   if (!origin) return json({ error: "origin_not_allowed" }, 403);
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
 
+  if (!/^application\/json(?:\s*;|\s*$)/i.test(req.headers.get("content-type") || "")) return json({ error: "unsupported_media_type" }, 415, origin);
+
   try {
     const url = Deno.env.get("SUPABASE_URL");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -103,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
     const authorization = req.headers.get("authorization") || "";
     const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    if (!bearer) return json({ error: "authentication_required" }, 401, origin);
+    if (!bearer || bearer.length > 8192) return json({ error: "authentication_required" }, 401, origin);
 
     const authClient = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: authData, error: authError } = await authClient.auth.getUser(bearer);
@@ -136,22 +149,22 @@ Deno.serve(async (req: Request) => {
 
     if (action === "profiles") {
       const profiles = await readAllRows((from, to) => admin.from("app_profiles")
-        .select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to));
+        .select("user_id,status,role,created_at,full_name", { count: "exact" }).order("created_at",{ascending:false}).order("user_id").range(from, to));
       return json({ profiles }, 200, origin);
     }
     if (action === "dashboard") {
       const [businesses, events, reviews, profiles] = await Promise.all([
-        readAllRows((from, to) => admin.from("app_businesses").select("*").order("name").range(from, to)),
-        readAllRows((from, to) => admin.from("app_business_events").select("business_id,event_type,created_at,device_type,source").order("created_at",{ascending:false}).range(from, to)),
-        readAllRows((from, to) => admin.from("app_business_review_snapshots").select("business_id,platform,review_count,captured_at").order("captured_at",{ascending:false}).range(from, to)),
-        readAllRows((from, to) => admin.from("app_profiles").select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to)),
+        readAllRows((from, to) => admin.from("app_businesses").select("*", { count: "exact" }).order("name").order("id").range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_events").select("id,business_id,event_type,created_at,device_type,source", { count: "exact" }).order("created_at",{ascending:false}).order("id").range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_review_snapshots").select("id,business_id,platform,review_count,captured_at", { count: "exact" }).order("captured_at",{ascending:false}).order("id").range(from, to)),
+        readAllRows((from, to) => admin.from("app_profiles").select("user_id,status,role,created_at,full_name", { count: "exact" }).order("created_at",{ascending:false}).order("user_id").range(from, to)),
       ]);
       return json({ businesses, events, reviews, profiles }, 200, origin);
     }
     if (action === "cards") {
       const [cards, events] = await Promise.all([
-        readAllRows((from, to) => admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,archived_at").order("channel").range(from, to)),
-        readAllRows((from, to) => admin.from("app_business_events").select("card_id,created_at").not("card_id","is",null).order("created_at",{ascending:false}).range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,archived_at", { count: "exact" }).order("channel").order("id").range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_events").select("id,card_id,created_at", { count: "exact" }).not("card_id","is",null).order("created_at",{ascending:false}).order("id").range(from, to)),
       ]);
       return json({ cards, events }, 200, origin);
     }
