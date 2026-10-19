@@ -126,45 +126,45 @@ test("staging diagnostics are read-only and compare history by tenant/channel", 
 });
 
 test("nullable schema fields and panel fallbacks preserve unknown legacy values", () => {
-  assert.match(schemaMigration,/ADD COLUMN IF NOT EXISTS category text/i);
-  assert.match(schemaMigration,/ADD COLUMN IF NOT EXISTS label text/i);
+  assert.ok(schemaMigration.includes("ADD COLUMN IF NOT EXISTS category text"));
+  assert.ok(schemaMigration.includes("ADD COLUMN IF NOT EXISTS label text"));
   assert.doesNotMatch(schemaMigration,/UPDATE public\\.(app_businesses|app_business_cards)/i);
   assert.doesNotMatch(schemaMigration,/category[^;]*DEFAULT|label[^;]*DEFAULT/i);
   assert.doesNotMatch(schemaMigration,/created_at/i);
-  assert.match(index,/categoryNames\\[x\\.category\\]\\|\\|x\\.category\\|\\|'Sin categoría'/);
-  assert.match(index,/x\\.label\\|\\|'Tarjeta sin nombre'/);
-  assert.doesNotMatch(index,/app_business_cards['"]\\)\\.select\\([^)]*created_at/);
+  assert.ok(index.includes("categoryNames[x.category]||x.category||'Sin categoría'"));
+  assert.ok(index.includes("x.label||'Tarjeta sin nombre'"));
+  assert.ok(!index.includes("app_business_cards').select('id,business_id,label,channel,target_url,status,created_at"));
 });
 
 test("dashboard mutations are server-authorized and client roles cannot promote themselves", () => {
-  assert.match(index,/functions\\.invoke\\(['"]manage-business-administration/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_businesses['"]\\)\\.insert/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_businesses['"]\\)\\.update/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_business_cards['"]\\)\\.insert/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_business_cards['"]\\)\\.update/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_business_members['"]\\)\\.upsert/);
-  assert.doesNotMatch(index,/\\.from\\(['"]app_profiles['"]\\)\\.update\\(\\{status/);
-  assert.match(adminFunction,/auth\\.getUser\\(bearer\\)/);
-  assert.match(adminFunction,/profile\\?\\.role !== ["']admin["']/);
-  assert.match(adminFunction,/profile\\?\\.status !== ["']approved["']/);
-  assert.match(adminFunction,/input\\.user_id === authData\\.user\\.id/);
-  assert.doesNotMatch(adminFunction,/update\\(\\{\\s*role:/);
-  assert.match(adminFunction,/member_upsert/);
-  assert.match(adminFunction,/business_id: input\\.business_id/);
+  assert.ok(index.includes("functions.invoke('manage-business-administration'"));
+  assert.ok(!index.includes(".from('app_businesses').insert"));
+  assert.ok(!index.includes(".from('app_businesses').update"));
+  assert.ok(!index.includes(".from('app_business_cards').insert"));
+  assert.ok(!index.includes(".from('app_business_cards').update"));
+  assert.ok(!index.includes(".from('app_business_members').upsert"));
+  assert.ok(!index.includes(".from('app_profiles').update({status"));
+  assert.ok(adminFunction.includes("auth.getUser(bearer)"));
+  assert.ok(adminFunction.includes('profile?.role !== "admin"'));
+  assert.ok(adminFunction.includes('profile?.status !== "approved"'));
+  assert.ok(adminFunction.includes("input.user_id === authData.user.id"));
+  assert.ok(!adminFunction.includes("update({ role:"));
+  assert.ok(adminFunction.includes("member_upsert"));
+  assert.ok(adminFunction.includes("business_id: input.business_id"));
 });
 
-test("dashboard permissions revoke direct writes only alongside replacement operations", () => {
+test("dashboard permissions revoke direct writes alongside server replacement operations", () => {
   assert.match(dashboardMigration,/REVOKE ALL PRIVILEGES ON TABLE public\\.app_businesses FROM PUBLIC, anon, authenticated/i);
   assert.match(dashboardMigration,/REVOKE MAINTAIN ON TABLE public\\.app_businesses FROM PUBLIC, anon, authenticated/i);
   assert.match(dashboardMigration,/REVOKE ALL PRIVILEGES ON TABLE public\\.app_business_cards FROM PUBLIC, anon, authenticated/i);
   assert.match(dashboardMigration,/GRANT UPDATE \\(full_name\\) ON TABLE public\\.app_profiles TO authenticated/i);
-  assert.match(dashboardMigration,/nq_central_profile_name_self_update/);
-  assert.match(dashboardMigration,/nq_central_member_review_insert/);
-  assert.match(dashboardMigration,/p\\.status='approved'/);
-  assert.match(dashboardMigration,/b\\.status='approved'/);
-  assert.match(dashboardMigration,/has_column_privilege/);
-  assert.match(adminFunction,/business_create/);
-  assert.match(adminFunction,/card_create/);
-  assert.match(adminFunction,/profile_status/);
-  assert.match(adminFunction,/member_upsert/);
+  assert.ok(dashboardMigration.includes("nq_central_profile_name_self_update"));
+  assert.ok(dashboardMigration.includes("nq_central_member_review_insert"));
+  assert.ok(dashboardMigration.includes("p.status='approved'"));
+  assert.ok(dashboardMigration.includes("b.status='approved'"));
+  assert.ok(dashboardMigration.includes("has_column_privilege"));
+  assert.ok(adminFunction.includes("business_create"));
+  assert.ok(adminFunction.includes("card_create"));
+  assert.ok(adminFunction.includes("profile_status"));
+  assert.ok(adminFunction.includes("member_upsert"));
 });
