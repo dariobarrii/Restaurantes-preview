@@ -9,7 +9,7 @@ WITH target_functions AS (
     AND (p.proname IN (
       'register_business_card_event_with_token',
       'consume_business_card_rate_limit',
-      'mirror_legacy_nfc_event_to_business'
+      'mirror_legacy_nfc_event_to_business',\n      'app_is_admin'
     ) OR p.prosecdef)
 )
 SELECT f.identity,
