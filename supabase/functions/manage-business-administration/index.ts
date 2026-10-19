@@ -117,7 +117,7 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "cards") {
       const [cards, events] = await Promise.all([
-        admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,created_at,archived_at").order("channel"),
+        admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,archived_at").order("channel"),
         admin.from("app_business_events").select("card_id,created_at").not("card_id","is",null).order("created_at",{ascending:false}).limit(10000),
       ]);
       if (cards.error || events.error) return json({ error: "admin_read_failed" }, 503, origin);
