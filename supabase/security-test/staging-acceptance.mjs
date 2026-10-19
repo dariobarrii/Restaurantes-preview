@@ -295,6 +295,18 @@ async function cleanup() {
       throw new Error("Cleanup stopped: a deterministic card ID no longer matches this fixture.");
     }
   }
+  const oldEvents = await get("app_business_events", "select=id,business_id,source&id=in.(" + EVENT_IDS.join(",") + ")");
+  for (const row of (oldEvents.data || [])) {
+    if (row.source !== SOURCE || !Object.values(BUSINESS).some((item) => item.id === row.business_id)) throw new Error("Cleanup stopped: event ID is outside the fixture scope.");
+  }
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
+  for (const row of (oldReviews.data || [])) {
+    const index = REVIEW_IDS.indexOf(Number(row.id));
+    const expectedBusiness = Object.values(BUSINESS)[index]?.id;
+    if (index < 0 || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
+      throw new Error("Cleanup stopped: review ID is outside the fixture scope.");
+    }
+  }
   await remove("app_business_events", "id=in.(" + EVENT_IDS.join(",") + ")&source=eq." + encodeURIComponent(SOURCE));
   await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
