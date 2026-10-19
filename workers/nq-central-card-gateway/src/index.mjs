@@ -62,7 +62,7 @@ async function readBounded(request, limit) {
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
-function publicUpstreamResult(responseBody, upstreamStatus, origin) {
+function publicUpstreamResult(responseBody, upstreamStatus, origin, gatewaySecret) {
   let result;
   try {
     result = JSON.parse(responseBody);
@@ -72,7 +72,7 @@ function publicUpstreamResult(responseBody, upstreamStatus, origin) {
   if (result && result.ok === true && typeof result.target_url === "string") {
     try {
       const target = new URL(result.target_url);
-      if (target.protocol === "https:" && !target.username && !target.password && target.href.length <= 2048) {
+      if (target.protocol === "https:" && !target.username && !target.password &&\n          target.href.length <= 2048 && !target.href.includes(gatewaySecret)) {
         return json({ ok: true, target_url: target.href }, upstreamStatus, origin);
       }
     } catch {}
@@ -144,7 +144,7 @@ export default {
       // Bound and allowlist the response: even an upstream error cannot echo headers or secrets.
       const responseBody = await readBounded(response, 4096);
       if (responseBody === null) return json({ ok: false, error: "event_gateway_unavailable" }, 502, origin);
-      return publicUpstreamResult(responseBody, response.status, origin);
+      return publicUpstreamResult(responseBody, response.status, origin, env.NQ_GATEWAY_SHARED_SECRET);
     } catch {
       return json({ ok: false, error: "event_gateway_unavailable" }, 502, origin);
     }
