@@ -336,7 +336,8 @@ test("card portal reads remain behind the admin function and SQL ACLs cover colu
   assert.match(schemaMigration,/LOCK TABLE public\.%I IN ACCESS EXCLUSIVE MODE/);
   assert.match(schemaMigration,/pg_get_serial_sequence/);
   assert.match(schemaMigration,/If the sequence is still owned by this ID column but its DEFAULT was/);
-  assert.match(schemaMigration,/IF v_default IS NULL THEN[\\s\\S]*ALTER TABLE public\\.%I ALTER COLUMN id SET DEFAULT nextval/);
+  assert.ok(schemaMigration.includes("IF v_default IS NULL THEN"));
+  assert.ok(schemaMigration.includes("'ALTER TABLE public.%I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)'"));
   assert.match(schemaMigration,/pg_depend/);
   assert.match(schemaMigration,/v_sequence_owner IS DISTINCT FROM v_table_owner/);
   assert.match(schemaMigration,/seqmin, seqmax, seqcycle/);
