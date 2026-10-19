@@ -91,10 +91,11 @@ Deno.serve(async (req: Request) => {
     const { data: globalAllowed, error: globalError } = await supabase.rpc("consume_business_card_rate_limit", {
       p_bucket_key: globalBucket, p_max_requests: 600, p_window_seconds: 60,
     });
-    if (globalError || globalAllowed !== true) {
-      if (globalError) console.error("Global rate-limit check failed");
-      return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "global_rate_limited" }, globalError ? 503 : 429);
+    if (globalError || typeof globalAllowed !== "boolean") {
+      console.error("Global rate-limit check failed");
+      return jsonResponse({ ok: false, error: "rate_limit_unavailable" }, 503);
     }
+    if (!globalAllowed) return jsonResponse({ ok: false, error: "global_rate_limited" }, 429);
 
     // Do not trust caller-controlled IP headers for rate-limit identity. The global ceiling remains active.
 

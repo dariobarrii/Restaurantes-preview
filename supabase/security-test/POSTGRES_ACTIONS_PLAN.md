@@ -31,3 +31,8 @@ La restauración conserva atributos del propietario: postgres de staging no es s
 
 4. Revisar resultado y huella, sin publicar dumps/logs privados. Un bloqueo de dependencias no equivale a un fallo de las migraciones.
 5. Tras pasar PostgreSQL real, solicitar por separado cualquier aplicación de migraciones o despliegue en staging. Este workflow nunca los realiza.
+
+
+## Revision de esta continuacion
+
+Se amplio el snapshot local con flags RLS, permisos EXECUTE/propietarios/SECURITY DEFINER, triggers y ACL por defecto. La prueba local solo verifica que esas comprobaciones estan preparadas; no parsea ni ejecuta SQL. El entorno sigue sin PostgreSQL/Docker/WSL instalado ni exportacion fiel. Restaurar membresias con GRANTED BY puede requerir ordenar dependencias administrativas reales: cualquier error debe bloquear, sin quitar grantors ni elevar el propietario. No se ejecuto el workflow. La validacion de 020/021 sigue pendiente.

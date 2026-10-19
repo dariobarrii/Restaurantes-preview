@@ -81,7 +81,7 @@ function publicUpstreamResult(responseBody, upstreamStatus, origin, gatewaySecre
   }
   const safeErrors = new Set([
     "invalid_request", "invalid_card", "rate_limited", "gateway_required",
-    "global_rate_limited", "global_rate_limit_unavailable", "request_too_large",
+    "global_rate_limited", "global_rate_limit_unavailable", "rate_limit_unavailable", "request_too_large",
   ]);
   const error = result && safeErrors.has(result.error) ? result.error : "event_registration_failed";
   return json({ ok: false, error }, upstreamStatus >= 400 ? upstreamStatus : 400, origin);

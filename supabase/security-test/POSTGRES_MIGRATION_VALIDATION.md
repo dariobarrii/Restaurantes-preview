@@ -12,7 +12,7 @@ Use the exact PostgreSQL major version reported by the approved staging project.
 
 Required tools must already be available locally: psql, pg_dump, and a local PostgreSQL server of the same major version. Do not install tools as part of this validation. If the matching server or any required Supabase extension/schema dependency is unavailable, stop and report the incompatibility rather than substituting mocks.
 
-## Reproducible procedure (after separate approval)
+## Reproducible procedure (local execution authorized; tooling/export still blocked)
 
 Run from PowerShell. Set the staging connection URL only in the current process environment; never echo it or put it in command history or a file.
 
@@ -69,13 +69,13 @@ Run from PowerShell. Set the staging connection URL only in the current process 
 
    ~~~powershell
    $localDb = "postgresql://localhost/nq_central_migration_validation"
-   psql -X $localDb -v ON_ERROR_STOP=1 -f supabase/migrations/020_add_nullable_dashboard_fields.sql
+   psql -X $localDb -U postgres -v ON_ERROR_STOP=1 -f supabase/migrations/020_add_nullable_dashboard_fields.sql
    if ($LASTEXITCODE -ne 0) { throw "020 first pass failed." }
-   psql -X $localDb -v ON_ERROR_STOP=1 -f supabase/migrations/020_add_nullable_dashboard_fields.sql
+   psql -X $localDb -U postgres -v ON_ERROR_STOP=1 -f supabase/migrations/020_add_nullable_dashboard_fields.sql
    if ($LASTEXITCODE -ne 0) { throw "020 idempotency pass failed." }
-   psql -X $localDb -v ON_ERROR_STOP=1 -f supabase/migrations/021_restrict_dashboard_mutations.sql
+   psql -X $localDb -U postgres -v ON_ERROR_STOP=1 -f supabase/migrations/021_restrict_dashboard_mutations.sql
    if ($LASTEXITCODE -ne 0) { throw "021 first pass failed." }
-   psql -X $localDb -v ON_ERROR_STOP=1 -f supabase/migrations/021_restrict_dashboard_mutations.sql
+   psql -X $localDb -U postgres -v ON_ERROR_STOP=1 -f supabase/migrations/021_restrict_dashboard_mutations.sql
    if ($LASTEXITCODE -ne 0) { throw "021 idempotency pass failed." }
    ~~~
 
@@ -98,3 +98,10 @@ Run from PowerShell. Set the staging connection URL only in the current process 
 ## What this local validation does not prove
 
 A schema clone cannot prove live Supabase authorization, deployed Edge Function behavior, RLS isolation between two users/businesses, or Worker/NFC/QR end-to-end behavior. Those require separate staging approval and the real two-business acceptance run. No migration, deployment, fixture, or historical import is authorized by this document.
+
+
+## Continuation check: 2026-10-19
+
+No server/client/dump/Docker was found on PATH or the standard PostgreSQL installation directory. wsl.exe reports WSL is not installed. No tools were installed and no disposable database could be created. Local PostgreSQL testing is authorized, but no faithful export or runtime is available. Existing metadata is not a substitute for a dump.
+
+Migration passes above now explicitly select the recreated staging owner postgres; do not let an OS-default superuser silently replace the real NOSUPERUSER/BYPASSRLS owner. The restore/bootstrap operator remains separate. Use postgres-clone-snapshot.sql after every pass; it now also captures RLS enabled/forced, function owner/SECURITY DEFINER/effective EXECUTE, trigger enabled state and default ACLs. These additions are prepared SQL, not executed PostgreSQL evidence. Any managed dependency/membership grantor restoration error blocks validation; do not remove it to obtain a green result.

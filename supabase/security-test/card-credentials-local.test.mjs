@@ -68,7 +68,7 @@ test('public registration cannot bypass the gateway header',async()=>{
  const f=fixture('register-business-card-event'),r=await f.invoke({card_id:cardId,token:'11'.repeat(32)},{gatewaySecret:'wrong-unit-placeholder'});assert.equal(r.status,403);assert.equal(f.rpcs.length,0);
 });
 test('global limits and limiter failures prevent a registration RPC',async()=>{
- for(const [globalAllowed,status] of [[false,429],[null,429]]){const f=fixture('register-business-card-event',{globalAllowed}),r=await f.invoke({card_id:cardId,token:'11'.repeat(32)});assert.equal(r.status,status);assert.equal(f.rpcs.length,1)}
+ for(const [globalAllowed,status] of [[false,429],[null,503]]){const f=fixture('register-business-card-event',{globalAllowed}),r=await f.invoke({card_id:cardId,token:'11'.repeat(32)});assert.equal(r.status,status);assert.equal(f.rpcs.length,1)}
 });
 test('invalid identifiers, raw tokens and device values never call registration',async()=>{
  for(const patch of [{card_id:'other'},{token:'invalid'},{device_type:'iOS'}]){const f=fixture('register-business-card-event'),r=await f.invoke({card_id:cardId,token:'11'.repeat(32),...patch});assert.equal(r.status,400);assert.equal(f.rpcs.filter(x=>x.operation==='register_business_card_event_with_token').length,0)}

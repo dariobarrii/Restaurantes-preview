@@ -46,3 +46,10 @@ test("workflow is manual-only, fixed to integration and never uploads dumps", as
   assert.equal(localStep.env, undefined);
   assert.equal(parsed.jobs.validate.steps.at(-1).if, "always()");
 });
+
+
+test("prepared idempotency snapshots include RLS, functions, triggers and default ACLs",async()=>{
+ const sql=await readFile("supabase/security-test/postgres-clone-snapshot.sql","utf8");
+ for(const item of ["relrowsecurity","relforcerowsecurity","has_function_privilege","pg_trigger","pg_default_acl"]) assert.ok(sql.includes(item));
+ assert.doesNotMatch(sql,/pg_get_functiondef|SELECT \* FROM public\./i);
+});
