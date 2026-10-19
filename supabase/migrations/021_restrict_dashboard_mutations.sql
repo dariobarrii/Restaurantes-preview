@@ -90,7 +90,7 @@ BEGIN
     -- Sequence ACLs are independent of table ACLs. Clear pre-existing direct
     -- and PUBLIC grants on both dashboard ID sequences before adding any need.
     EXECUTE pg_catalog.format(
-      'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated, service_role',
+      'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
       v_sequence::regclass
     );
     IF t='app_business_review_snapshots' THEN
@@ -383,8 +383,17 @@ BEGIN
        'authenticated', pg_catalog.pg_get_serial_sequence(
          'public.app_business_events','id'), 'USAGE')
      OR pg_catalog.has_sequence_privilege(
-       'service_role', pg_catalog.pg_get_serial_sequence(
-         'public.app_business_events','id'), 'USAGE')
+       'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'SELECT')
+     OR pg_catalog.has_sequence_privilege(
+       'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'UPDATE')
+     OR pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'SELECT')
+     OR pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'UPDATE')
      OR pg_catalog.has_sequence_privilege(
        'anon', pg_catalog.pg_get_serial_sequence(
          'public.app_business_review_snapshots','id'), 'USAGE')
