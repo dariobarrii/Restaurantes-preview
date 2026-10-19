@@ -69,6 +69,8 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "method_not_allowed" }, 405);
 
+  if (!/^application\/json(?:\s*;|\s*$)/i.test(req.headers.get("content-type") || "")) return jsonResponse({ ok: false, error: "unsupported_media_type" }, 415);
+
   const contentLength = Number(req.headers.get("content-length") || "0");
   if (contentLength > 2048) return jsonResponse({ ok: false, error: "request_too_large" }, 413);
 
@@ -90,7 +92,7 @@ Deno.serve(async (req: Request) => {
       p_bucket_key: globalBucket, p_max_requests: 600, p_window_seconds: 60,
     });
     if (globalError || globalAllowed !== true) {
-      if (globalError) console.error("Global rate-limit check failed:", globalError.message);
+      if (globalError) console.error("Global rate-limit check failed");
       return jsonResponse({ ok: false, error: globalError ? "rate_limit_unavailable" : "global_rate_limited" }, globalError ? 503 : 429);
     }
 
@@ -110,7 +112,7 @@ Deno.serve(async (req: Request) => {
       p_card_id: cardId, p_token_hash: tokenHash, p_device_type: deviceType,
     });
     if (error) {
-      console.error("Event registration failed:", error.message);
+      console.error("Event registration failed");
       return jsonResponse({ ok: false, error: "registration_failed" }, 500);
     }
     const result = data as { ok?: boolean; error?: string; target_url?: unknown };
@@ -119,7 +121,7 @@ Deno.serve(async (req: Request) => {
       if (!targetUrl) return jsonResponse({ ok: false, error: "invalid_destination" }, 500);
       return jsonResponse({ ok: true, target_url: targetUrl });
     }
-    if (["invalid_card", "rate_limited", "invalid_request"].includes(result?.error || "")) return jsonResponse(result);
+    if (["invalid_card", "rate_limited", "invalid_request"].includes(result?.error || "")) return jsonResponse({ ok: false, error: result.error });
     return jsonResponse({ ok: false, error: "registration_failed" }, 500);
   } catch (error) {
     if (error instanceof PayloadTooLargeError) {

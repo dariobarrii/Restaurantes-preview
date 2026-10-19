@@ -25,12 +25,28 @@ async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+class PayloadTooLargeError extends Error {}
+
 async function readBody(req: Request): Promise<Record<string, unknown> | null> {
-  const declared = Number(req.headers.get("content-length") || "0");
-  if (declared > 4096) return null;
-  const text = await req.text();
-  if (new TextEncoder().encode(text).byteLength > 4096) return null;
-  const value: unknown = JSON.parse(text);
+  if (Number(req.headers.get("content-length") || "0") > 4096) throw new PayloadTooLargeError();
+  const reader = req.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > 4096) {
+      await reader.cancel();
+      throw new PayloadTooLargeError();
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
@@ -46,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await readBody(req);
-    if (!body) return response({ error: "invalid_request" }, 400, origin);
+    if (!body || Object.keys(body).some((key) => !["operation", "card_id"].includes(key))) return response({ error: "invalid_request" }, 400, origin);
     const operation = body.operation;
     const cardId = body.card_id;
     if (!["issue", "rotate", "revoke"].includes(String(operation)) || typeof cardId !== "string" || !UUID.test(cardId)) {
@@ -113,7 +129,8 @@ Deno.serve(async (req: Request) => {
 
     // The raw bearer token is returned only to the authenticated administrator and is never logged.
     return response({ ok: true, card_id: card.id, token }, 201, origin);
-  } catch {
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) return response({ error: "request_too_large" }, 413, origin);
     return response({ error: "invalid_request" }, 400, origin);
   }
 });

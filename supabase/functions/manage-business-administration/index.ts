@@ -66,7 +66,7 @@ async function readBody(req: Request): Promise<Record<string, unknown>> {
     total += value.byteLength;
     if (total > 8192) {
       await reader.cancel();
-      throw new Error("request_too_large");
+      throw new PayloadTooLargeError();
     }
     chunks.push(value);
   }

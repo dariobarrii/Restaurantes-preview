@@ -113,3 +113,11 @@ test("database insert failures are not reported as creation successes", async ()
     assert.equal(result.body.ok, undefined);
   }
 });
+
+test("streamed administrative bodies over 8192 bytes return HTTP 413", async () => {
+  const fixture = handlerFor();
+  const result = await fixture.invoke({ action: "dashboard", padding: "x".repeat(8193) });
+  assert.equal(result.status, 413);
+  assert.equal(result.body.error, "request_too_large");
+  assert.equal(fixture.inserts.length, 0);
+});

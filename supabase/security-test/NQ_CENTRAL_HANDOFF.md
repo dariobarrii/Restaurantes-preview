@@ -42,3 +42,13 @@ Bloque portal completado: `nq-central-data.mjs` y `index.html` preservan el nego
 5. Actualizar este relevo y hacer commits pequeños. Nunca incluir secretos, dumps privados o logs SQL completos en Git/chat.
 
 Próximo cambio de código recomendado: revisar el límite de body de manage-business-card-token y las pruebas del scanner de producto, sin conectar endpoints E2E ni desplegar.
+
+## Bloque credenciales y scanner completado
+
+Se limita la lectura en streaming de credenciales a 4096 bytes antes de autenticar; se cancelan cuerpos excesivos con HTTP 413 y se rechazan campos inesperados. No se cambió el contrato issue/rotate: el panel usa rotate también para la primera emisión mediante upsert. Administración devuelve 413 también cuando el exceso llega por streaming. Registro exige application/json y solo devuelve campos de error permitidos, sin mensajes de proveedor en logs. card.html elimina el fragmento de credencial antes de validar configuración, incluso cuando el gateway falta, y no redirige ante errores o destinos inseguros.
+
+Resultados reales de esta jornada: 66/66 Node (24 estáticas, 6 handler administrativo, 9 Worker, 4 guards del plan PostgreSQL, 9 portal, 7 credenciales/registro, 7 scanner). Sintaxis de staging-acceptance.mjs aprobada. Comando completo y salida: results/2026-10-19-continuation-node-tests.txt. Las pruebas de handlers usan clientes sustituidos; no prueban RLS ni PostgreSQL. Las del scanner ejecutan el script actual en VM sin red. El fixture de integración NO se ejecutó y no se modificaron datos de staging. No se lanzó workflow ni se aplicó SQL. Las migraciones 020/021 no se modificaron en esta jornada: su validación real sigue bloqueada.
+
+Preparado INTEGRAL_ACCEPTANCE_PLAN.md con orden de aceptación, evidencia requerida, límites de cada suite y operaciones que requieren aprobación. No volver a usar los smoke antiguos como evidencia del scanner actual.
+
+Próximo cambio recomendado actualizado: definir un contrato de request_id persistente entre scanner, gateway, Edge y RPC si se requiere idempotencia de reintentos; revisar todos los consumidores y diseñar migración separada antes de implementarlo. El límite temporal actual por tarjeta no es idempotencia duradera. Antes de lanzamiento también hace falta prueba PostgreSQL concurrente de pausa/revocación durante registro y aislamiento real de los dos negocios. Las pruebas locales de autorización no cubren esos casos.
