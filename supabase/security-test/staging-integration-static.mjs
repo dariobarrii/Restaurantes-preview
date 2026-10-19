@@ -178,6 +178,10 @@ test("each dashboard mutation validates identifiers, allowed fields, and authori
   assert.ok(adminFunction.includes("card_write_failed"));
   assert.ok(adminFunction.includes("business_write_failed"));
   assert.ok(adminFunction.includes("membership_write_failed"));
+  assert.ok(adminFunction.includes("business_not_found"));
+  assert.ok(adminFunction.includes("profile_not_found"));
+  assert.ok(adminFunction.includes("card_not_found"));
+  assert.ok(adminFunction.includes(".select(\"id\").maybeSingle()"));
 });
 
 test("dashboard permissions revoke direct writes alongside server replacement operations", () => {
