@@ -45,6 +45,16 @@ async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function safeHttpsTarget(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  try {
+    const target = new URL(value);
+    return target.protocol === "https:" && !target.username && !target.password ? target.href : null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -103,8 +113,12 @@ Deno.serve(async (req: Request) => {
       console.error("Event registration failed:", error.message);
       return jsonResponse({ ok: false, error: "registration_failed" }, 500);
     }
-    const result = data as { ok?: boolean; error?: string };
-    if (result?.ok === true) return jsonResponse({ ok: true });
+    const result = data as { ok?: boolean; error?: string; target_url?: unknown };
+    if (result?.ok === true) {
+      const targetUrl = safeHttpsTarget(result.target_url);
+      if (!targetUrl) return jsonResponse({ ok: false, error: "invalid_destination" }, 500);
+      return jsonResponse({ ok: true, target_url: targetUrl });
+    }
     if (["invalid_card", "rate_limited", "invalid_request"].includes(result?.error || "")) return jsonResponse(result);
     return jsonResponse({ ok: false, error: "registration_failed" }, 500);
   } catch (error) {
