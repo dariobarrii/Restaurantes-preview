@@ -113,3 +113,14 @@ test("sanitizes malformed and unexpected upstream responses", async () => {
   assert.equal(body.includes("private detail"), false);
   assert.equal(body.includes("event_registration_failed"), true);
 });
+
+test("does not return a destination containing the gateway secret", async () => {
+  globalThis.fetch = async () => Response.json({
+    ok: true,
+    target_url: "https://example.invalid/" + gatewaySecret,
+  });
+  const response = await worker.fetch(request(), makeEnv());
+  const body = await response.text();
+  assert.equal(response.status, 502);
+  assert.equal(body.includes(gatewaySecret), false);
+});
