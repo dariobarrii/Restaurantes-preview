@@ -262,7 +262,8 @@ test("staging acceptance fixture is project-locked, scoped, and secret-free", ()
   assert.ok(stagingFixture.includes('const SOURCE = "nq_central_acceptance_fixture_v1"'));
   assert.ok(stagingFixture.includes('app_metadata?.nq_central_fixture === FIXTURE'));
   assert.ok(stagingFixture.includes('if (!keep) await cleanup()'));
-  assert.ok(stagingFixture.includes('business_id=in.('));
+  assert.ok(stagingFixture.includes('id=in.('));
+  assert.ok(stagingFixture.includes('business_id: BUSINESS[tenant].id'));
   assert.ok(stagingFixture.includes('token_hash: digest(raw)'));
   assert.ok(!stagingFixture.includes("service_role_key ="));
   assert.ok(!stagingFixture.includes("console.log("));
