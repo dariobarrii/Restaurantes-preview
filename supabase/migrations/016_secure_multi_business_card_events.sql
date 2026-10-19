@@ -166,6 +166,17 @@ BEGIN
      OR pg_catalog.has_table_privilege('authenticated','public.nfc_events','INSERT') THEN
     RAISE EXCEPTION 'Client roles retain direct event insertion privileges';
   END IF;
+
+  IF pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','SELECT')
+     OR pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','INSERT')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','SELECT')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','INSERT')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','SELECT')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','INSERT')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','UPDATE') THEN
+    RAISE EXCEPTION 'Token table privileges do not match server-only access';
+  END IF;
 END
 $permissions$;
 
