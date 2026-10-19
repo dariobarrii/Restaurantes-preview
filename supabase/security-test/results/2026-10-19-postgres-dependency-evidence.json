@@ -73,11 +73,11 @@
     "metadata_export_select_explain_without_analyze_succeeded": true,
     "application_rows_read": false,
     "function_bodies_read": false,
-    "setting_values_read": false,
     "schema_dump_obtained": false,
     "containers_executed": false,
     "workflows_executed": false,
     "staging_writes": false,
-    "migrations_validated": false
+    "migrations_validated": false,
+    "database_role_setting_values_read": false
   }
 }
