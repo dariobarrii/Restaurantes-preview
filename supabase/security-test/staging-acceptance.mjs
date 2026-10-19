@@ -267,6 +267,21 @@ async function checkDirectWriteRejected(bearer) {
 async function cleanup() {
   const businessIds = Object.values(BUSINESS).map((b) => b.id).join(",");
   const cardIds = Object.values(CARD_IDS).join(",");
+  const existingBusinesses = await get("app_businesses", "select=id,slug,name&id=in.(" + businessIds + ")");
+  for (const row of (existingBusinesses.data || [])) {
+    const expected = Object.values(BUSINESS).find((item) => item.id === row.id);
+    if (!expected || row.slug !== expected.slug || row.name !== expected.name) {
+      throw new Error("Cleanup stopped: a deterministic business ID no longer matches this fixture.");
+    }
+  }
+  const existingCards = await get("app_business_cards", "select=id,business_id,target_url&id=in.(" + cardIds + ")");
+  for (const row of (existingCards.data || [])) {
+    const cardKey = cardById.get(row.id);
+    const tenant = cardKey?.startsWith("a_") ? "a" : "b";
+    if (!cardKey || row.business_id !== BUSINESS[tenant].id || !String(row.target_url).includes("/nq-fixture/" + tenant + "/" + cardKey)) {
+      throw new Error("Cleanup stopped: a deterministic card ID no longer matches this fixture.");
+    }
+  }
   await remove("app_business_events", "business_id=in.(" + businessIds + ")&source=eq." + encodeURIComponent(SOURCE));
   await remove("app_business_review_snapshots", "business_id=in.(" + businessIds + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
