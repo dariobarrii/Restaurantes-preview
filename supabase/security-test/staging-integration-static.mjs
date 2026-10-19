@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample] = await Promise.all([
+const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample, reconciliationSql] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
@@ -14,6 +14,7 @@ const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigrati
   readFile("workers/nq-central-card-gateway/src/index.mjs","utf8"),
   readFile("supabase/security/registration-privilege-checks.sql","utf8"),
   readFile("workers/nq-central-card-gateway/wrangler.example.toml","utf8"),
+  readFile("supabase/security/historical-event-reconciliation.sql","utf8"),
 ]);
 
 test("portal and card use business filtering and server gateway paths", () => {
@@ -103,4 +104,17 @@ test("historical import is idempotent and does not rewrite attribution or event 
   assert.doesNotMatch(conflictUpdate,/business_id|event_type|created_at|legacy_event_id/);
   assert.match(historyMigration,/count\(\*\) = 1/);
   assert.doesNotMatch(historyMigration,/Veta|Tzura|Feral/);
+});
+
+test("staging diagnostics are read-only and compare history by tenant/channel", () => {
+  assert.doesNotMatch(privilegeSql,/^\s*(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\b/im);
+  assert.doesNotMatch(privilegeSql,/pg_get_functiondef|\bprosrc\b/i);
+  assert.match(privilegeSql,/app_profiles/);
+  assert.match(privilegeSql,/app_business_members/);
+  assert.match(privilegeSql,/qual,with_check/);
+  assert.match(privilegeSql,/public.*mirror_legacy_nfc_event_to_business/);
+  assert.doesNotMatch(reconciliationSql,/^\s*(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\b/im);
+  assert.match(reconciliationSql,/FULL JOIN imported/);
+  assert.match(reconciliationSql,/imported_attribution_channel_or_date_mismatches/);
+  assert.match(reconciliationSql,/duplicate_legacy_event_id_groups/);
 });
