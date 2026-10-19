@@ -84,6 +84,26 @@ table td:not(:first-child){
  .mobile-nav-icon{font-size:23px;line-height:1}
  .mobile-bottom-nav button:focus-visible{outline:2px solid #e6b564;outline-offset:2px}
 }
+</style><style>
+/* NQ Portátil: jerarquía móvil distinta, mismo dashboard y mismos datos */
+@media(max-width:720px){
+ #inicio{display:none}
+ #inicio.active{display:flex;flex-direction:column;gap:12px}
+ #inicio>.metrics{order:1;margin:0}
+ #inicio>.review-feature{order:2;margin:0}
+ #inicio>.live-panel{order:3;margin:0}
+ #inicio>.grid2:nth-of-type(1){order:4;margin:0}
+ #inicio>.grid2:nth-of-type(2){order:5;margin:0}
+ #inicio>.demo-note{order:6}
+ #inicio .grid2{display:flex;flex-direction:column;gap:12px}
+ #inicio .grid2>.card{width:100%}
+ #inicio .review-feature .card-head{align-items:flex-start;flex-direction:column}
+ #inicio .review-feature .card-head>.btn{width:100%;text-align:center;margin-top:5px}
+ #inicio .chart-wrap{height:225px}
+ #inicio .activity-overview{order:-1}
+ #inicio .live-feed{grid-template-columns:1fr}
+ #inicio .metric-tile{min-height:110px}
+}
 </style></head><body>
 <div class="layout"><aside class="sidebar"><div class="brand">NQ CENTRAL<small>PORTAL DE CLIENTES</small></div><div class="business-switch">◉ &nbsp; La Terraza <small>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Restaurante · Ejemplo</small></div><nav class="nav" aria-label="Navegación principal">
 <button class="active" data-page="inicio">⌂ &nbsp; Resumen</button><button data-page="estadisticas">▥ &nbsp; Estadísticas NFC/QR</button><button data-page="tarjetas">▣ &nbsp; Tarjetas y ubicaciones</button><button data-page="resenas">G &nbsp; Reseñas de Google</button><button data-page="control">☆ &nbsp; Apertura y cierre</button><button data-page="informes">▤ &nbsp; Informes</button><button data-page="perfil">⚙ &nbsp; Configuración</button></nav><div class="sidebar-foot">NQ Central · Vista de demostración</div></aside>
