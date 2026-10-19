@@ -13,6 +13,7 @@ const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigrati
   readFile("supabase/migrations/017_import_legacy_events_idempotently.sql","utf8"),
   readFile("workers/nq-central-card-gateway/src/index.mjs","utf8"),
   readFile("supabase/security/registration-privilege-checks.sql","utf8"),
+  readFile("workers/nq-central-card-gateway/wrangler.example.toml","utf8"),
 ]);
 
 test("portal and card use business filtering and server gateway paths", () => {
