@@ -138,14 +138,16 @@ Deno.serve(async (req: Request) => {
       if (typeof input.name === "string" && input.name.trim() && input.name.trim().length <= 120) patch.name = input.name.trim();
       if (typeof input.slug === "string" && slugPattern.test(input.slug.trim().toLowerCase())) patch.slug = input.slug.trim().toLowerCase();
       if (!Object.keys(patch).length) return json({ error: "invalid_business" }, 400, origin);
-      const { error } = await admin.from("app_businesses").update(patch).eq("id", input.id);
+      const { data, error } = await admin.from("app_businesses").update(patch).eq("id", input.id).select("id").maybeSingle();
       if (error) return json({ error: "business_write_failed" }, 409, origin);
+      if (!data) return json({ error: "business_not_found" }, 404, origin);
       return json({ ok: true }, 200, origin);
     }
     if (action === "business_status") {
       if (typeof input.id !== "string" || !uuid.test(input.id) || typeof input.status !== "string" || !statuses.has(input.status)) return json({ error: "invalid_business" }, 400, origin);
-      const { error } = await admin.from("app_businesses").update({ status: input.status }).eq("id", input.id);
+      const { data, error } = await admin.from("app_businesses").update({ status: input.status }).eq("id", input.id).select("id").maybeSingle();
       if (error) return json({ error: "business_write_failed" }, 409, origin);
+      if (!data) return json({ error: "business_not_found" }, 404, origin);
       return json({ ok: true }, 200, origin);
     }
     if (action === "profile_status") {
@@ -153,8 +155,9 @@ Deno.serve(async (req: Request) => {
           typeof input.status !== "string" || !new Set(["pending","approved","rejected"]).has(input.status)) {
         return json({ error: "invalid_profile_change" }, 400, origin);
       }
-      const { error } = await admin.from("app_profiles").update({ status: input.status }).eq("user_id", input.user_id);
+      const { data, error } = await admin.from("app_profiles").update({ status: input.status }).eq("user_id", input.user_id).select("user_id").maybeSingle();
       if (error) return json({ error: "profile_write_failed" }, 409, origin);
+      if (!data) return json({ error: "profile_not_found" }, 404, origin);
       return json({ ok: true }, 200, origin);
     }
     if (action === "member_upsert") {
@@ -211,8 +214,9 @@ Deno.serve(async (req: Request) => {
         (patch as Record<string, unknown>).archived_at = new Date().toISOString();
       }
       if (!Object.keys(patch).length) return json({ error: "invalid_card_change" }, 400, origin);
-      const { error } = await admin.from("app_business_cards").update(patch).eq("id", input.id);
+      const { data, error } = await admin.from("app_business_cards").update(patch).eq("id", input.id).select("id").maybeSingle();
       if (error) return json({ error: "card_write_failed" }, 409, origin);
+      if (!data) return json({ error: "card_not_found" }, 404, origin);
       return json({ ok: true }, 200, origin);
     }
     return json({ error: "unknown_action" }, 400, origin);
