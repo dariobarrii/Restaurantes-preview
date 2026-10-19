@@ -25,10 +25,11 @@ function allowedOrigin(request, env) {
   return origin && allowed.includes(origin) ? origin : null;
 }
 
-function validUpstream(value) {
+function validUpstream(value, expectedProjectRef) {
   try {
     const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password ||
+    if (!expectedProjectRef || url.hostname !== expectedProjectRef + ".supabase.co" ||
+        url.protocol !== "https:" || url.username || url.password ||
         !url.pathname.endsWith("/functions/v1/register-business-card-event")) return null;
     return url;
   } catch {
@@ -73,7 +74,7 @@ export default {
     }
     if (!limitResult.success) return json({ ok: false, error: "client_rate_limited" }, 429, origin);
 
-    const upstream = validUpstream(env.SUPABASE_FUNCTION_URL || "");
+    const upstream = validUpstream(env.SUPABASE_FUNCTION_URL || "", env.STAGING_PROJECT_REF || "");
     if (!upstream || !env.NQ_GATEWAY_SHARED_SECRET) {
       return json({ ok: false, error: "gateway_configuration_error" }, 503, origin);
     }
