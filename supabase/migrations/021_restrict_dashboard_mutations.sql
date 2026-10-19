@@ -75,26 +75,33 @@ $preflight$;
 
 -- Authenticated review inserts rely on the ID default created/verified by 020.
 -- Grant only sequence use needed for DEFAULT nextval; browser users cannot set IDs.
-DO $review_sequence_acl$
+DO $dashboard_sequence_acl$
 DECLARE
+  t text;
   v_sequence text;
 BEGIN
-  v_sequence := pg_catalog.pg_get_serial_sequence(
-    'public.app_business_review_snapshots', 'id'
-  );
-  IF v_sequence IS NULL THEN
-    RAISE EXCEPTION 'Migration 020 must establish the review ID sequence first';
-  END IF;
-  EXECUTE pg_catalog.format(
-    'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
-    v_sequence::regclass
-  );
-  EXECUTE pg_catalog.format(
-    'GRANT USAGE ON SEQUENCE %s TO authenticated, service_role',
-    v_sequence::regclass
-  );
+  FOREACH t IN ARRAY ARRAY[
+    'app_business_events','app_business_review_snapshots'
+  ] LOOP
+    v_sequence := pg_catalog.pg_get_serial_sequence('public.' || t, 'id');
+    IF v_sequence IS NULL THEN
+      RAISE EXCEPTION 'Migration 020 must establish the public.% ID sequence first', t;
+    END IF;
+    -- Sequence ACLs are independent of table ACLs. Clear pre-existing direct
+    -- and PUBLIC grants on both dashboard ID sequences before adding any need.
+    EXECUTE pg_catalog.format(
+      'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated, service_role',
+      v_sequence::regclass
+    );
+    IF t='app_business_review_snapshots' THEN
+      EXECUTE pg_catalog.format(
+        'GRANT USAGE ON SEQUENCE %s TO authenticated, service_role',
+        v_sequence::regclass
+      );
+    END IF;
+  END LOOP;
 END
-$review_sequence_acl$;
+$dashboard_sequence_acl$;
 
 -- Browser clients keep scoped reads; all business/card writes go through the
 -- authenticated management Edge Function using its server-side service role.
@@ -371,11 +378,35 @@ BEGIN
 
   IF pg_catalog.has_sequence_privilege(
        'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'USAGE')
+     OR pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'USAGE')
+     OR pg_catalog.has_sequence_privilege(
+       'service_role', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_events','id'), 'USAGE')
+     OR pg_catalog.has_sequence_privilege(
+       'anon', pg_catalog.pg_get_serial_sequence(
          'public.app_business_review_snapshots','id'), 'USAGE')
+     OR pg_catalog.has_sequence_privilege(
+       'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'SELECT')
+     OR pg_catalog.has_sequence_privilege(
+       'anon', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'UPDATE')
      OR NOT pg_catalog.has_sequence_privilege(
        'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'USAGE')
+     OR pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'SELECT')
+     OR pg_catalog.has_sequence_privilege(
+       'authenticated', pg_catalog.pg_get_serial_sequence(
+         'public.app_business_review_snapshots','id'), 'UPDATE')
+     OR NOT pg_catalog.has_sequence_privilege(
+       'service_role', pg_catalog.pg_get_serial_sequence(
          'public.app_business_review_snapshots','id'), 'USAGE') THEN
-    RAISE EXCEPTION 'Review ID sequence privileges do not match the portal insert flow';
+    RAISE EXCEPTION 'Effective dashboard ID sequence privileges do not match the portal flow';
   END IF;
 END
 $verify_restricted_acl$;
