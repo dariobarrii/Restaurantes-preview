@@ -26,11 +26,16 @@ Run from PowerShell. Set the staging connection URL only in the current process 
 
    The query is read-only. Do not continue if the project identity is uncertain.
 
-2. Confirm local tools and server major match the recorded staging major:
+2. Confirm local tools and the actual local server major match the recorded staging major:
 
    ~~~powershell
    psql --version
    pg_dump --version
+   $localAdminDb = "postgresql://localhost/postgres"
+   $localVersion = psql -X $localAdminDb -v ON_ERROR_STOP=1 -Atc "SELECT current_setting('server_version_num')::integer"
+   if ($LASTEXITCODE -ne 0) { throw "Could not read the local PostgreSQL server version." }
+   $localMajor = [math]::Floor(([int]$localVersion) / 10000)
+   if ($localMajor -ne $serverMajor) { throw "Local PostgreSQL major does not match staging; stop." }
    ~~~
 
    Use only an already available local PostgreSQL server matching $serverMajor. A client version alone does not prove the server version.
@@ -39,13 +44,24 @@ Run from PowerShell. Set the staging connection URL only in the current process 
 
    ~~~powershell
    $env:NQ_SCHEMA_DUMP = Join-Path $env:TEMP "nq-central-staging-schema.sql"
-   pg_dump --schema-only --no-privileges --file $env:NQ_SCHEMA_DUMP $env:NQ_STAGING_DB_URL
+   pg_dump --schema-only --file $env:NQ_SCHEMA_DUMP $env:NQ_STAGING_DB_URL
    if ($LASTEXITCODE -ne 0) { throw "Schema-only export failed; stop." }
    ~~~
 
-   This exports no table rows. If managed Supabase schemas, extensions, or role ownership prevent a faithful restore, stop; do not hand-write substitute definitions and call the result equivalent.
+   This exports no table rows. Keep ACL statements in the dump: removing privileges would hide pre-existing grants that migration 021 must revoke. If managed Supabase schemas, extensions, or role ownership prevent a faithful restore, stop; do not hand-write substitute definitions and call the result equivalent.
 
-4. Restore that snapshot into a disposable local database on the matching PostgreSQL major. Create only local roles required by the dump (anon, authenticated, service_role, and any owners referenced by the schema). Give those local roles no passwords; do not reuse production or staging credentials. Restore the full schema with ownership preserved where possible. If restore reports missing extensions, unsupported managed objects, or role/owner mismatches, stop and record the limitation.
+4. Restore that snapshot into a new disposable local database on the matching PostgreSQL major. These commands affect only localhost:
+
+   ~~~powershell
+   $localDbName = "nq_central_migration_validation"
+   createdb --maintenance-db=$localAdminDb $localDbName
+   if ($LASTEXITCODE -ne 0) { throw "Could not create the disposable local database; stop." }
+   $localDb = "postgresql://localhost/$localDbName"
+   psql -X $localDb -v ON_ERROR_STOP=1 -f $env:NQ_SCHEMA_DUMP
+   if ($LASTEXITCODE -ne 0) { throw "Schema restore failed; stop." }
+   ~~~
+
+   Before restoring, create only local NOLOGIN roles required by the dump (including grantees and any owners referenced by the schema); do not add passwords or reuse production/staging credentials. Preserve the ACL statements from the dump. If the restore reports missing extensions, unsupported managed objects, or role/owner mismatches, stop and record the limitation. Do not strip ACLs or ownership and call the result equivalent.
 
 5. On the disposable local clone only, run each migration twice with stop-on-error. Run 020 twice before 021 twice:
 
