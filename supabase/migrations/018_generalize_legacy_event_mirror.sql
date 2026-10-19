@@ -23,7 +23,7 @@ BEGIN
   END IF;
 
   IF target_business_id IS NULL THEN
-    SELECT pg_catalog.count(*), pg_catalog.min(b.id)
+    SELECT pg_catalog.count(*), (pg_catalog.array_agg(b.id))[1]
       INTO name_match_count, target_business_id
       FROM public.app_businesses AS b
      WHERE pg_catalog.lower(pg_catalog.trim(b.name)) =
