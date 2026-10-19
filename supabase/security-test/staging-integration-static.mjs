@@ -343,6 +343,8 @@ test("card portal reads remain behind the admin function and SQL ACLs cover colu
   assert.match(schemaMigration,/pg_depend/);
   assert.match(schemaMigration,/v_sequence_owner IS DISTINCT FROM v_table_owner/);
   assert.match(schemaMigration,/seqmin, seqmax, seqcycle/);
+  assert.match(schemaMigration,/seqincrement/);
+  assert.match(schemaMigration,/ID sequence must increment by 1/);
   assert.match(schemaMigration,/v_max_id = 9223372036854775807/);
   assert.match(schemaMigration,/ALTER SEQUENCE %s RESTART WITH %s/);
   assert.match(schemaMigration,/ALTER COLUMN category DROP NOT NULL/);
