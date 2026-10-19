@@ -13,6 +13,8 @@ import { createHash, randomBytes } from "node:crypto";
 const PROJECT_REF = "rxxbmqilnozcnpwguqga";
 const FIXTURE = "nq_central_acceptance_v1";
 const SOURCE = "nq_central_acceptance_fixture_v1";
+const EVENT_IDS = [991000001,991000002,991000003,991000004,992000001,992000002,992000003,992000004];
+const REVIEW_IDS = [993000001,993000002];
 const BUSINESS = {
   a: { id: "a1000000-0000-4000-8000-000000000001", slug: "nq-test-fixture-a", name: "NQ Staging Fixture A" },
   b: { id: "b1000000-0000-4000-8000-000000000002", slug: "nq-test-fixture-b", name: "NQ Staging Fixture B" },
@@ -180,18 +182,29 @@ async function prepareMembershipsAndTokens() {
 }
 async function prepareEvents() {
   const businessIds = Object.values(BUSINESS).map((b) => b.id).join(",");
-  await remove("app_business_events",
-    "business_id=in.(" + businessIds + ")&source=eq." + encodeURIComponent(SOURCE));
-  await remove("app_business_review_snapshots", "business_id=in.(" + businessIds + ")&source=eq.manual");
+  const eventIds = EVENT_IDS.join(",");
+  const oldEvents = await get("app_business_events", "select=id,business_id,source&id=in.(" + eventIds + ")");
+  for (const row of (oldEvents.data || [])) {
+    if (row.source !== SOURCE || !Object.values(BUSINESS).some((b) => b.id === row.business_id)) throw new Error("Fixture event ID collides with a non-fixture row.");
+  }
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
+  for (const row of (oldReviews.data || [])) {
+    if (!Object.values(BUSINESS).some((b) => b.id === row.business_id) || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
+      throw new Error("Fixture review ID collides with a non-fixture row.");
+    }
+  }
+  await remove("app_business_events", "id=in.(" + eventIds + ")");
+  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")");
   const now = Date.now();
   const rows = [];
+  let eventIndex = 0;
   for (const tenant of ["a", "b"]) {
     for (const [event_type, cardKey, daysAgo] of [
       ["nfc_tap", tenant + "_nfc", 0], ["nfc_tap", tenant + "_nfc", 3],
       ["qr_scan", tenant + "_qr", 0], ["qr_scan", tenant + "_qr", 10],
     ]) {
       rows.push({
-        business_id: BUSINESS[tenant].id, event_type,
+        id: EVENT_IDS[eventIndex++], business_id: BUSINESS[tenant].id, event_type,
         created_at: new Date(now - daysAgo * 86400000).toISOString(),
         source: SOURCE, device_type: "mobile", card_id: CARD_IDS[cardKey],
       });
@@ -200,7 +213,7 @@ async function prepareEvents() {
   await request(table("app_business_events"), { method: "POST", body: rows, prefer: "return=minimal" });
   await request(table("app_business_review_snapshots"), {
     method: "POST",
-    body: Object.values(BUSINESS).map((b) => ({ business_id: b.id, platform: "Google apertura", review_count: 7, captured_at: new Date(now).toISOString(), source: "manual" })),
+    body: Object.values(BUSINESS).map((b, index) => ({ id: REVIEW_IDS[index], business_id: b.id, platform: "Google apertura", review_count: 7, captured_at: new Date(now).toISOString(), source: "manual" })),
     prefer: "return=minimal",
   });
 }
@@ -282,8 +295,8 @@ async function cleanup() {
       throw new Error("Cleanup stopped: a deterministic card ID no longer matches this fixture.");
     }
   }
-  await remove("app_business_events", "business_id=in.(" + businessIds + ")&source=eq." + encodeURIComponent(SOURCE));
-  await remove("app_business_review_snapshots", "business_id=in.(" + businessIds + ")&source=eq.manual");
+  await remove("app_business_events", "id=in.(" + EVENT_IDS.join(",") + ")&source=eq." + encodeURIComponent(SOURCE));
+  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
   await remove("app_business_cards", "id=in.(" + cardIds + ")");
   const authUsers = await listAuthUsers();
