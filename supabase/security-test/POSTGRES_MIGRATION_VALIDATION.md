@@ -82,6 +82,7 @@ Run from PowerShell. Set the staging connection URL only in the current process 
 6. Against the disposable local clone, run read-only catalog checks for:
    - category and label being nullable;
    - each ID column default/identity being tied to the owned sequence;
+   - a missing default being restored only when the ID column still owns the sequence, while any different existing default remains a fail-closed error;
    - sequence owner matching table owner, non-cycling configuration, range and next value beyond existing IDs;
    - authenticated having only profile full_name UPDATE and review snapshot INSERT on business_id, platform, review_count;
    - no effective browser table-level INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN, including inherited role grants;
