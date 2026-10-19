@@ -164,7 +164,33 @@ function renderLiveFeed(highlight=false){
  document.getElementById('liveFeed').innerHTML=entries.map((e,i)=>'<button type="button" class="live-event '+(highlight&&i===0?'new':'')+'" data-event-index="'+i+'"><span class="live-symbol">'+(e.type==='NFC'?'◉':'▦')+'</span><span><strong>'+e.type+' · '+e.place+'</strong><small>'+e.time+' · '+(e.demo?'Simulación':'Ejemplo')+'</small></span></button>').join('');document.querySelectorAll('[data-event-index]').forEach(btn=>btn.addEventListener('click',()=>{const e=entries[Number(btn.dataset.eventIndex)];document.getElementById('eventDetail').textContent=e.type+' · '+e.place+' · '+e.time+' · '+(e.demo?'Evento generado localmente en esta sesión.':'Evento ficticio de ejemplo.')+' No se envió a Supabase.'}));
  document.getElementById('demoEventCount').textContent=simulatedEvents.length+' eventos simulados';
 }
-function drawChart(id,d){const el=document.getElementById(id);if(!el||typeof Chart==='undefined')return;if(charts[id])charts[id].destroy();charts[id]=new Chart(el,{type:'line',data:{labels:d.labels,datasets:[{label:'NFC',data:d.a,borderColor:'#d4aa6a',backgroundColor:'rgba(212,170,106,.09)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18},{label:'QR',data:d.b,borderColor:'#936b49',backgroundColor:'rgba(147,107,73,.08)',fill:true,tension:.35,pointRadius:4,pointHoverRadius:8,pointHitRadius:18}].filter(ds=>id!=='activityChart'||seriesMode==='both'||ds.label.toLowerCase()===seriesMode)},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#c5b7a7'}},tooltip:{enabled:true,mode:'index',intersect:false,backgroundColor:'#281e16',titleColor:'#f5d29a',bodyColor:'#f1e5d6',borderColor:'#9a7042',borderWidth:1}},scales:{x:{ticks:{color:'#a69a8c'},grid:{color:'#34291f'}},y:{beginAtZero:true,ticks:{color:'#a69a8c'},grid:{color:'#34291f'}}}}})}
+function drawChart(id,d){
+ const el=document.getElementById(id);
+ if(!el||typeof Chart==='undefined')return;
+ if(charts[id])charts[id].destroy();
+ const ctx=el.getContext('2d');
+ const gradient=(top)=>{const g=ctx.createLinearGradient(0,0,0,Math.max(el.clientHeight||230,180));g.addColorStop(0,top==='nfc'?'rgba(221,181,126,.38)':'rgba(140,157,165,.23)');g.addColorStop(.65,top==='nfc'?'rgba(221,181,126,.10)':'rgba(140,157,165,.06)');g.addColorStop(1,'rgba(12,10,8,0)');return g};
+ const datasets=[
+  {label:'NFC',data:d.a,borderColor:'#ddb57e',backgroundColor:gradient('nfc'),fill:'origin',tension:.42,borderWidth:2.8,pointRadius:0,pointHoverRadius:5,pointHitRadius:22,pointHoverBackgroundColor:'#ddb57e',pointHoverBorderColor:'#241b15',pointHoverBorderWidth:2},
+  {label:'QR',data:d.b,borderColor:'#8c9da5',backgroundColor:gradient('qr'),fill:'origin',tension:.42,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointHitRadius:22,pointHoverBackgroundColor:'#8c9da5',pointHoverBorderColor:'#241b15',pointHoverBorderWidth:2}
+ ].filter(ds=>id!=='activityChart'||seriesMode==='both'||ds.label.toLowerCase()===seriesMode);
+ charts[id]=new Chart(el,{
+  type:'line',data:{labels:d.labels,datasets},
+  options:{
+   responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   animation:{duration:450},
+   plugins:{
+    legend:{position:'top',align:'start',labels:{color:'#d8c5ae',usePointStyle:true,pointStyle:'circle',boxWidth:8,boxHeight:8,padding:18,font:{size:12}}},
+    tooltip:{enabled:true,mode:'index',intersect:false,backgroundColor:'#211811',titleColor:'#f5d29a',bodyColor:'#f1e5d6',borderColor:'#947044',borderWidth:1,padding:12,displayColors:true,callbacks:{label:(c)=>c.dataset.label+': '+Number(c.parsed.y).toLocaleString('es-ES')+' interacciones'}}
+   },
+   scales:{
+    x:{ticks:{color:'#b9a48d',maxRotation:0,autoSkip:true,maxTicksLimit:7},grid:{display:false},border:{display:false}},
+    y:{beginAtZero,ticks:{color:'#9f8b78',precision:0,maxTicksLimit:5},grid:{color:'rgba(151,115,78,.16)',drawTicks:false},border:{display:false}}
+   },
+   elements:{line:{capBezierPoints:true}}
+  }
+ });
+}
 function render(){const d=activeData();document.getElementById('metrics').innerHTML=metricsHtml(d);document.getElementById('statsMetrics').innerHTML=metricsHtml(d);document.getElementById('cardTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeTotal').textContent=(d.nfc+d.qr).toLocaleString('es-ES');document.getElementById('homeNfc').textContent=d.nfc;document.getElementById('homeQr').textContent=d.qr;document.querySelectorAll('[data-period]').forEach(b=>b.classList.toggle('active',Number(b.dataset.period)===period));drawChart('activityChart',d);drawChart('statsChart',d);renderInsights(d);renderReportSummary();renderAlerts()}
 document.getElementById('topCards').innerHTML=cards.slice(0,4).map(c=>'<div style="margin:13px 0"><div class="line"><span>'+c.name+'</span><strong class="gold">'+(c.nfc+c.qr)+' interacciones</strong></div><div class="bar"><span style="width:'+Math.round((c.nfc+c.qr)/116*100)+'%"></span></div></div>').join('');
 document.getElementById('cardPerformance').textContent='Mejor ubicación: '+cards.slice().sort((a,b)=>(b.nfc+b.qr)-(a.nfc+a.qr))[0].name+' · '+(cards[0].nfc+cards[0].qr)+' interacciones de ejemplo. No se dispone de datos de inactividad real.';
