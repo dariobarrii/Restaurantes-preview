@@ -379,7 +379,8 @@ async function main() {
     await checkSelfApproval(viewerToken, credentials.get("viewer").id);
     await checkDirectWriteRejected(ownerToken);
     const allPassed = outcomes.every((item) => item.ok);
-    note("product token/gateway flow", false, "pending: product Edge Functions and Worker are not part of this fixture run");
+    process.stdout.write("BLOCKED product token/gateway/card lifecycle: product Edge Functions and Worker are not part of this fixture run.\n");
+    process.stdout.write("BLOCKED durable replay/idempotency and frequency limits: no deployed product registration path is available to exercise.\n");
     process.stdout.write("Integration results are limited to the staging REST/RLS checks above; NFC/QR end-to-end remains pending.\n");
     if (!keep) await cleanup();
     if (!allPassed) process.exitCode = 1;
