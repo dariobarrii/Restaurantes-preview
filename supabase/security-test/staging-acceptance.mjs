@@ -180,6 +180,7 @@ async function prepareEvents() {
   const businessIds = Object.values(BUSINESS).map((b) => b.id).join(",");
   await remove("app_business_events",
     "business_id=in.(" + businessIds + ")&source=eq." + encodeURIComponent(SOURCE));
+  await remove("app_business_review_snapshots", "business_id=in.(" + businessIds + ")&source=eq.manual");
   const now = Date.now();
   const rows = [];
   for (const tenant of ["a", "b"]) {
@@ -195,10 +196,19 @@ async function prepareEvents() {
     }
   }
   await request(table("app_business_events"), { method: "POST", body: rows, prefer: "return=minimal" });
+  await request(table("app_business_review_snapshots"), {
+    method: "POST",
+    body: Object.values(BUSINESS).map((b) => ({ business_id: b.id, platform: "Google apertura", review_count: 7, captured_at: new Date(now).toISOString(), source: "manual" })),
+    prefer: "return=minimal",
+  });
 }
 async function inspectTenant(label, bearer, expectedBusiness, otherBusiness) {
   const result = await get("app_business_events", "select=business_id,event_type,created_at&order=created_at.asc", bearer);
   const rows = Array.isArray(result.data) ? result.data : [];
+  if (!result.response.ok) {
+    note(label + " can read tenant events", false, "HTTP " + result.response.status);
+    return { rows: [], mine: [] };
+  }
   const leaks = rows.some((row) => row.business_id === otherBusiness);
   const mine = rows.filter((row) => row.business_id === expectedBusiness);
   const nfc = mine.filter((row) => row.event_type === "nfc_tap").length;
@@ -207,6 +217,33 @@ async function inspectTenant(label, bearer, expectedBusiness, otherBusiness) {
   note(label + " cannot read the other tenant", !leaks, leaks ? "cross-business row exposed" : "no foreign rows");
   note(label + " sees known channel totals", nfc === 2 && qr === 2, "nfc=" + nfc + ", qr=" + qr);
   return { rows, mine };
+}
+async function checkReviewIsolation(bearer, expectedBusiness, otherBusiness, label) {
+  const result = await get("app_business_review_snapshots", "select=business_id,platform,review_count&source=eq.manual", bearer);
+  if (!result.response.ok) {
+    note(label + " review snapshot access", false, "HTTP " + result.response.status);
+    return;
+  }
+  const rows = Array.isArray(result.data) ? result.data : [];
+  note(label + " reads own review snapshot", rows.some((row) => row.business_id === expectedBusiness), "own business only expected");
+  note(label + " cannot read foreign review snapshot", !rows.some((row) => row.business_id === otherBusiness), "foreign business not visible");
+}
+async function checkSelfElevation(bearer, userId) {
+  const attempt = await request(table("app_profiles", "user_id=eq." + userId), {
+    method: "PATCH", key: anonKey, bearer, body: { role: "admin" }, allowError: true, prefer: "return=minimal",
+  });
+  if (attempt.response.ok) {
+    await request(table("app_profiles", "user_id=eq." + userId), { method: "PATCH", body: { role: "restaurant" }, prefer: "return=minimal" });
+  }
+  note("user cannot self-assign administrator", !attempt.response.ok, "HTTP " + attempt.response.status);
+}
+async function checkSelfApproval(bearer, userId) {
+  await request(table("app_profiles", "user_id=eq." + userId), { method: "PATCH", body: { status: "pending" }, prefer: "return=minimal" });
+  const attempt = await request(table("app_profiles", "user_id=eq." + userId), {
+    method: "PATCH", key: anonKey, bearer, body: { status: "approved" }, allowError: true, prefer: "return=minimal",
+  });
+  await request(table("app_profiles", "user_id=eq." + userId), { method: "PATCH", body: { status: "approved" }, prefer: "return=minimal" });
+  note("user cannot self-approve", !attempt.response.ok, "HTTP " + attempt.response.status);
 }
 async function checkDirectWriteRejected(bearer) {
   const cardId = CARD_IDS.a_nfc;
@@ -229,6 +266,7 @@ async function cleanup() {
   const businessIds = Object.values(BUSINESS).map((b) => b.id).join(",");
   const cardIds = Object.values(CARD_IDS).join(",");
   await remove("app_business_events", "business_id=in.(" + businessIds + ")&source=eq." + encodeURIComponent(SOURCE));
+  await remove("app_business_review_snapshots", "business_id=in.(" + businessIds + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
   await remove("app_business_cards", "id=in.(" + cardIds + ")");
   const authUsers = await listAuthUsers();
@@ -260,6 +298,10 @@ async function main() {
     const viewerToken = await signIn("viewer");
     await inspectTenant("owner/business A", ownerToken, BUSINESS.a.id, BUSINESS.b.id);
     await inspectTenant("viewer/business B", viewerToken, BUSINESS.b.id, BUSINESS.a.id);
+    await checkReviewIsolation(ownerToken, BUSINESS.a.id, BUSINESS.b.id, "owner");
+    await checkReviewIsolation(viewerToken, BUSINESS.b.id, BUSINESS.a.id, "viewer");
+    await checkSelfElevation(ownerToken, credentials.get("owner").id);
+    await checkSelfApproval(viewerToken, credentials.get("viewer").id);
     await checkDirectWriteRejected(ownerToken);
     const allPassed = outcomes.every((item) => item.ok);
     note("product token/gateway flow", false, "pending: product Edge Functions and Worker are not part of this fixture run");
