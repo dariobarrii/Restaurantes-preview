@@ -66,52 +66,14 @@ function handlerFor({ profile = { role: "admin", status: "approved" }, databaseE
 const businessInput = { action: "business_create", name: "Local test", slug: "local-test", category: "restaurant" };
 const cardInput = { action: "card_create", business_id: businessId, channel: "nfc", label: "Local card", target_url: "https://example.invalid/card" };
 
-test("business creation supplies a server UUID without a database default", async () => {
-  const fixture = handlerFor();
-  const result = await fixture.invoke(businessInput);
-  assert.equal(result.status, 201);
-  assert.equal(result.body.id, generatedId);
-  assert.equal(fixture.inserts[0].table, "app_businesses");
-  assert.equal(fixture.inserts[0].payload.id, generatedId);
+test("all known non-read actions return 403 without any write", async () => {
+ for (const action of ["business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update","cards"]) {
+  const f=handlerFor();const result=await f.invoke({action});
+  assert.equal(result.status,403);assert.equal(result.body.error,"action_not_enabled");assert.equal(f.inserts.length,0);
+ }
 });
-
-test("card creation supplies a server UUID and preserves the approved business", async () => {
-  const fixture = handlerFor();
-  const result = await fixture.invoke(cardInput);
-  assert.equal(result.status, 201);
-  assert.equal(result.body.id, generatedId);
-  assert.equal(fixture.inserts[0].table, "app_business_cards");
-  assert.equal(fixture.inserts[0].payload.id, generatedId);
-  assert.equal(fixture.inserts[0].payload.business_id, businessId);
-  assert.equal(fixture.inserts[0].payload.channel, "nfc");
-});
-
-test("creation rejects caller-supplied primary keys", async () => {
-  for (const input of [businessInput, cardInput]) {
-    const fixture = handlerFor();
-    const result = await fixture.invoke({ ...input, id: generatedId });
-    assert.equal(result.status, 400);
-    assert.equal(result.body.error, "unexpected_field");
-    assert.equal(fixture.inserts.length, 0);
-  }
-});
-
-test("unapproved or non-admin profiles cannot reach creation writes", async () => {
-  for (const profile of [{ role: "restaurant", status: "approved" }, { role: "admin", status: "pending" }]) {
-    const fixture = handlerFor({ profile });
-    const result = await fixture.invoke(businessInput);
-    assert.equal(result.status, 403);
-    assert.equal(fixture.inserts.length, 0);
-  }
-});
-
-test("database insert failures are not reported as creation successes", async () => {
-  for (const input of [businessInput, cardInput]) {
-    const fixture = handlerFor({ databaseError: true });
-    const result = await fixture.invoke(input);
-    assert.equal(result.status, 409);
-    assert.equal(result.body.ok, undefined);
-  }
+test("even complete creation payloads cannot reach inserts",async()=>{
+ for(const body of [businessInput,cardInput]){const f=handlerFor({databaseError:true});const r=await f.invoke(body);assert.equal(r.status,403);assert.equal(r.body.error,"action_not_enabled");assert.equal(f.inserts.length,0)}
 });
 
 test("streamed administrative bodies over 8192 bytes return HTTP 413", async () => {
@@ -132,10 +94,10 @@ test("every administrative action denies unapproved and non-admin users before d
   }
 });
 
-test("self-approval and role promotion are rejected by the real admin handler", async () => {
+test("profile mutations remain disabled including self-approval and promotion", async () => {
   const f=handlerFor();
-  assert.equal((await f.invoke({action:"profile_status",user_id:businessId,status:"approved"})).status,400);
-  assert.equal((await f.invoke({action:"profile_status",user_id:generatedId,status:"approved",role:"admin"})).status,400);
+  assert.equal((await f.invoke({action:"profile_status",user_id:businessId,status:"approved"})).status,403);
+  assert.equal((await f.invoke({action:"profile_status",user_id:generatedId,status:"approved",role:"admin"})).status,403);
 });
 
 function reader() {

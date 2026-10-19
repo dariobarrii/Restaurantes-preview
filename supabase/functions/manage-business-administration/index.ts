@@ -143,6 +143,10 @@ Deno.serve(async (req: Request) => {
     };
     const allowedFields = fieldsByAction[action];
     if (!allowedFields) return json({ error: "unknown_action" }, 400, origin);
+    // Stage-one server barrier: never enable writes through a browser flag.
+    if (action !== "dashboard" && action !== "profiles") {
+      return json({ error: "action_not_enabled" }, 403, origin);
+    }
     if (Object.keys(input).some((field) => !allowedFields.includes(field))) {
       return json({ error: "unexpected_field" }, 400, origin);
     }
@@ -154,7 +158,7 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "dashboard") {
       const [businesses, events, reviews, profiles] = await Promise.all([
-        readAllRows((from, to) => admin.from("app_businesses").select("*", { count: "exact" }).order("name").order("id").range(from, to)),
+        readAllRows((from, to) => admin.from("app_businesses").select("id,name,slug,status", { count: "exact" }).order("name").order("id").range(from, to)),
         readAllRows((from, to) => admin.from("app_business_events").select("id,business_id,event_type,created_at,device_type,source", { count: "exact" }).order("created_at",{ascending:false}).order("id").range(from, to)),
         readAllRows((from, to) => admin.from("app_business_review_snapshots").select("id,business_id,platform,review_count,captured_at", { count: "exact" }).order("captured_at",{ascending:false}).order("id").range(from, to)),
         readAllRows((from, to) => admin.from("app_profiles").select("user_id,status,role,created_at,full_name", { count: "exact" }).order("created_at",{ascending:false}).order("user_id").range(from, to)),

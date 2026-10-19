@@ -359,7 +359,8 @@ test("fixture checks HTTP and final state, isolates authorization probes, and fa
 });
 
 test("card portal reads remain behind the admin function and SQL ACLs cover column grants", () => {
-  assert.match(index,/adminRequest\(['"]cards['"]\)/);
+  assert.doesNotMatch(index,/adminRequest\(['"]cards['"]\)/);
+  assert.match(adminFunction,/error: "action_not_enabled"/);
   assert.doesNotMatch(index,/\.from\(['"]app_business_cards['"]\)/);
   assert.match(dashboardMigration,/REVOKE ALL \(%I\) ON TABLE public\.%I FROM PUBLIC, anon, authenticated/);
   assert.match(dashboardMigration,/DO \$verify_column_acl\$/);
