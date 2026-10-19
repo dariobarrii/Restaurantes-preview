@@ -115,6 +115,7 @@ CREATE POLICY nq_central_member_review_insert ON public.app_business_review_snap
         AND m.user_id=(SELECT auth.uid())
         AND p.status='approved'
         AND b.status='approved'
+        AND m.member_role IN ('owner','manager')
     )
     AND platform IN ('Google apertura','Google cierre')
     AND source='manual'
