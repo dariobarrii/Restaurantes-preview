@@ -106,3 +106,10 @@ test("database ACL preparation preserves grantor and grant options without CREAT
  assert.match(sql,/SET ROLE "postgres"/);assert.match(sql,/TO "authenticated" WITH GRANT OPTION/);
  assert.doesNotMatch(sql,/CREATE DATABASE|\\connect/);
 });
+
+
+test("export implementation guards private files and column/schema write privileges",async()=>{
+ const source=await readFile("supabase/security-test/postgres-validation.mjs","utf8");
+ for(const guard of ["realpathSync(process.env.RUNNER_TEMP)","entry.isSymbolicLink()","entry.mode & 0o077","has_any_column_privilege","has_schema_privilege"]) assert.ok(source.includes(guard));
+ assert.doesNotMatch(source,/pg_authid|rolpassword/);
+});

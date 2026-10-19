@@ -2,7 +2,7 @@
 // export issues only metadata SELECT and pg_dump --schema-only against staging.
 // validate passes every SQL write to a fixed local Docker DB/user, never to a URL.
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, rmSync, appendFileSync, realpathSync, existsSync, lstatSync } from "node:fs";
 import { resolve, join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
@@ -112,7 +112,7 @@ export function requireExtensions(source, available) {
   for (const ext of source) if (!available.some((x) => x.name === ext.name && x.version === ext.version)) throw new Blocked("Required extension/version is not available in the local image; faithful restore blocked.");
 }
 
-const metadataSql = `SELECT jsonb_build_object(
+export const metadataSql = `SELECT jsonb_build_object(
  'version',current_setting('server_version_num')::integer,
  'database',(SELECT jsonb_build_object('acl',(SELECT jsonb_agg(jsonb_build_object('grantor',pg_get_userbyid(x.grantor),'grantee',CASE WHEN x.grantee=0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END,'privilege',x.privilege_type,'is_grantable',x.is_grantable) ORDER BY x.grantor,x.grantee,x.privilege_type) FROM aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) x),'owner',pg_get_userbyid(datdba),'encoding',pg_encoding_to_char(encoding),'collate',datcollate,'ctype',datctype,'provider',to_jsonb(d)->>'datlocprovider','locale',to_jsonb(d)->>'datlocale','collation_version',to_jsonb(d)->>'datcollversion') FROM pg_database d WHERE datname=current_database()),
  'preload',jsonb_build_object('shared_preload_libraries',current_setting('shared_preload_libraries'),'session_preload_libraries',current_setting('session_preload_libraries')),
@@ -139,9 +139,16 @@ function context() {
   checkRunner(process.env,repository);
   const container = process.env.NQ_PG_CONTAINER || "";
   if (!/^[a-f0-9]{12,64}$/.test(container)) throw new Blocked("Missing local service container ID.");
-  const root = resolve(process.env.RUNNER_TEMP || "");
+  if (!process.env.RUNNER_TEMP) throw new Blocked("Missing private temporary root.");
+  const root = realpathSync(process.env.RUNNER_TEMP);
   const dir = resolve(root, "nq-postgres-validation");
   if (!process.env.RUNNER_TEMP || !dir.startsWith(root + sep)) throw new Blocked("Invalid private temporary directory.");
+  const workspace = realpathSync(process.cwd());
+  if (dir === workspace || dir.startsWith(workspace + sep)) throw new Blocked("Private exports must be outside the checkout.");
+  if (existsSync(dir)) {
+    const entry = lstatSync(dir);
+    if (entry.isSymbolicLink() || !entry.isDirectory() || (entry.mode & 0o077) !== 0 || (process.getuid && entry.uid !== process.getuid())) throw new Blocked("Private export directory ownership/permissions are unsafe.");
+  }
   return { container, dir };
 }
 function docker(c, args, input, name, remoteEnv = {}) {

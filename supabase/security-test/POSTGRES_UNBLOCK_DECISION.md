@@ -72,3 +72,7 @@ La distribucion [Supabase Postgres documenta PG17.11 y extensiones](https://gith
 6. Eliminar contenedor y archivos privados propios; eliminar Codespace desde GitHub y verificar fin de consumo/almacenamiento. No existe cleanup automatico del Codespace.
 
 Ningun paso autoriza aplicar migraciones, modificar staging, desplegar o importar historico. La restauracion fiel y las migraciones siguen NO EJECUTADAS. Solo se ejecutaron pruebas puras locales del procedimiento y consultas SELECT de dependencias.
+
+## Comprobacion adicional realizada
+
+El SELECT de metadatos del exportador fue planificado con EXPLAIN (FORMAT JSON), sin ANALYZE, en staging confirmado: plan generado sin error. Es solo una comprobacion de la consulta de lectura. No valida SQL de restauracion o migraciones. Cuatro consultas SELECT nuevas y este EXPLAIN quedan documentados en results/2026-10-19-postgres-dependency-evidence.json sin valores de ajustes/filas/bodies. Se reforzo tambien la ruta privada fuera del checkout y permisos/owner de directorio. El requisito de dump/imagen/ejecucion externa sigue pendiente.

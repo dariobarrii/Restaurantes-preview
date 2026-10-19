@@ -94,3 +94,9 @@ Pruebas locales especificas del plan PostgreSQL: 12/12 aprobadas; no se repitio 
 ## Bloque independiente: idempotencia propuesta
 
 NFC_IDEMPOTENCY_DESIGN.md define un candidato con request_id por intento, unicidad persistente por tarjeta, generacion de credencial, validacion antes de replay y transaccion atomica. NO cambia contrato de card/Worker/Edge/RPC, NO crea migracion ni endpoint y NO habilita retries. Modelo separado con Maps/cola: 9/9 pruebas locales aprobadas, incluido 20 repeticiones concurrentes, dos negocios/NFC-QR, rotacion y revocacion. No prueba PostgreSQL, RLS, durabilidad ni reinicios. Comando: node --test supabase/security-test/idempotency-contract.test.mjs. Proximo paso sigue desbloquear clon fiel mediante Codespace autorizado y dependencias/dump privados; luego decidir contrato candidato antes de implementar cambios reales de producto.
+
+## Evidencia final de esta continuacion
+
+Se valido el parseo/planificacion del SELECT de metadatos del exportador mediante EXPLAIN (FORMAT JSON), sin ANALYZE, contra staging confirmado. Resultado: plan generado sin error. NO se ejecutaron roles.sql, dump, restore, 020 ni 021; no confundir esta comprobacion de consulta de lectura con validar migraciones. Evidencia saneada: results/2026-10-19-postgres-dependency-evidence.json (cuatro SELECT de dependencias y un EXPLAIN, sin filas de aplicaciones ni secretos). Export privado ahora exige ruta fuera del checkout, sin symlink y permisos/propietario privados.
+
+Pruebas relevantes finales: 22/22 (13 guards del plan PostgreSQL y 9 del modelo de idempotencia); node --check del exportador aprobado. No se repitio la suite completa de 80. La evidencia anterior sigue siendo historica, no una nueva corrida integral. Ver results/2026-10-19-postgres-idempotency-tests.txt. Todos los bloqueos/operaciones pendientes estan en POSTGRES_UNBLOCK_DECISION.md.
