@@ -72,7 +72,8 @@ function publicUpstreamResult(responseBody, upstreamStatus, origin, gatewaySecre
   if (result && result.ok === true && typeof result.target_url === "string") {
     try {
       const target = new URL(result.target_url);
-      if (target.protocol === "https:" && !target.username && !target.password &&\n          target.href.length <= 2048 && !target.href.includes(gatewaySecret)) {
+      if (target.protocol === "https:" && !target.username && !target.password &&
+          target.href.length <= 2048 && !target.href.includes(gatewaySecret)) {
         return json({ ok: true, target_url: target.href }, upstreamStatus, origin);
       }
     } catch {}
