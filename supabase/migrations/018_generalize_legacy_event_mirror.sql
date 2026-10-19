@@ -56,3 +56,43 @@ BEGIN
   END IF;
 END
 $verify_acl$;
+
+-- Remove any additional direct grantees retained from an older function definition.
+DO $acl_sweep$
+DECLARE
+  f_oid oid := 'public.mirror_legacy_nfc_event_to_business()'::regprocedure::oid;
+  owner_oid oid;
+  g record;
+BEGIN
+  SELECT p.proowner INTO owner_oid FROM pg_catalog.pg_proc p WHERE p.oid=f_oid;
+  FOR g IN
+    SELECT DISTINCT acl.grantee, pg_catalog.pg_get_userbyid(acl.grantee) AS role_name
+    FROM pg_catalog.pg_proc p
+    CROSS JOIN LATERAL pg_catalog.aclexplode(
+      COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+    ) acl
+    WHERE p.oid=f_oid
+      AND acl.privilege_type='EXECUTE'
+      AND acl.grantee<>0
+      AND acl.grantee<>owner_oid
+  LOOP
+    EXECUTE pg_catalog.format(
+      'REVOKE EXECUTE ON FUNCTION public.mirror_legacy_nfc_event_to_business() FROM %I',
+      g.role_name
+    );
+  END LOOP;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_proc p
+    CROSS JOIN LATERAL pg_catalog.aclexplode(
+      COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+    ) acl
+    WHERE p.oid=f_oid
+      AND acl.privilege_type='EXECUTE'
+      AND acl.grantee<>p.proowner
+  ) THEN
+    RAISE EXCEPTION 'Unexpected EXECUTE grantee remains on legacy mirror trigger function';
+  END IF;
+END
+$acl_sweep$;
