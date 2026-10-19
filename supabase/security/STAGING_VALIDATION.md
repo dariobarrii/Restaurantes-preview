@@ -1,31 +1,71 @@
 # Staging security corrections and verification
 
-These files are branch-only proposals. Nothing here has been applied to Supabase or deployed.
+These are branch-only proposals. Nothing has been applied to Supabase or deployed. This review did not connect to Supabase or read event rows.
 
-## RPC/table access control
+## Worker review
 
-Migration 016 explicitly revokes EXECUTE on the registration RPC from PUBLIC, anon and authenticated, then grants it to service_role. It also discovers the rate-limit RPC by catalog name and signature, restricts its EXECUTE to service_role, and asserts these effective permissions. It removes client INSERT on both event tables so a direct table write cannot bypass the gateway or invoke the legacy mirror; token-table access is limited to service_role.
+`workers/nq-central-card-gateway/src/index.mjs` now:
 
-Migration 018 similarly removes client EXECUTE from the SECURITY DEFINER legacy mirror trigger function. The existing trigger should continue to fire; confirm this in staging after the migration.
+- accepts only an allowlisted Origin and POST (with a CORS OPTIONS preflight); Origin is a browser control, not authentication;
+- checks JSON content type and reads request/response bodies as bounded streams (2,048 and 4,096 bytes);
+- accepts only the exact HTTPS function path on the project hostname derived from `STAGING_PROJECT_REF`; no query, fragment, user info, alternate host, redirects or caller-supplied upstream;
+- sends the gateway secret only in a server-to-server request header. It is not logged; response JSON is reconstructed from a small allowlist so an upstream echo cannot return arbitrary fields or the secret to the browser;
+- applies a hashed per-client-IP rate key and fails closed when the rate binding or client identity is unavailable.
 
-### Read-only staging verification
+A source-level test uses a dummy secret to check that the secret is forwarded only upstream and not returned. The key is Cloudflare's `CF-Connecting-IP`, not `X-Forwarded-For`. IPs can group visitors behind shared Wi-Fi, carrier NAT or privacy relays; the operator should assess this during the staging usability test.
 
-Review supabase/security/registration-privilege-checks.sql manually and run it only against the staging project. Expected results:
-- registration and rate-limit functions: public_execute_acl=false, anon_can_execute=false, authenticated_can_execute=false, service_role_can_execute=true;
-- legacy mirror: no PUBLIC/anon/authenticated EXECUTE;
-- anon/authenticated INSERT=false on app_business_events and nfc_events;
-- inspect RLS and remaining SELECT/UPDATE privileges against the actual portal behavior.
+### Test configuration and rate limits
 
-Migration 010's token-table policy also references public.app_is_admin(). The accessible source did not establish its definition or deployed ACL, and this branch does not change it; the catalog query lists all SECURITY DEFINER functions, including app_is_admin if present. Verify its status and required policy execution access in staging. The migration contains post-change assertions, but they have not been run. These checks do not prove runtime isolation by themselves.
+`workers/nq-central-card-gateway/wrangler.example.toml` is a template for local/test use only. It declares `RATE_LIMITER` at an initial proposed threshold of **30 requests per IP per 60 seconds**. Replace the sample namespace identifier with a unique positive integer in the test Cloudflare account, and provide only approved staging values through local `.dev.vars` or a separate staging secret store. The gateway secret is intentionally absent from the TOML; never commit it. The template does not provision a binding or deploy anything.
 
-## Rate limits
+For local work, copy the template to an untracked local config if desired, fill the staging-only non-secret values, and provide a dummy/test gateway secret through local secret storage. Run the Worker in local mode only after Wrangler is already available; local simulations do not prove the deployed binding or upstream configuration. No dependencies were installed and no Wrangler command was run in this review.
 
-The Edge Function has a global ceiling of 600 calls per 60 seconds and a per-card database cooldown of 2 seconds. The new Worker candidate adds a hashed per-client key using Cloudflare's trusted CF-Connecting-IP and a RATE_LIMITER binding. It fails closed if the client IP, binding, or limit service is unavailable. Its threshold/window must be configured in the Cloudflare binding by the operator; this branch does not configure or deploy a service. Required staging-only bindings are RATE_LIMITER, STAGING_PROJECT_REF, SUPABASE_FUNCTION_URL, ALLOWED_ORIGINS and the private NQ_GATEWAY_SHARED_SECRET. No values are included. Cloudflare's Worker binding supports configured 10- or 60-second periods and is local to an edge location with eventual consistency, so choose a conservative abuse threshold and do not treat it as an exact global counter. No prior Worker source was located in the accessible branch files; a new candidate now lives under workers/nq-central-card-gateway. It is not connected until its staging URL is reviewed and set in the blank frontend config. The origin limit is keyed by a hash of the client IP because public scans have no authenticated user ID; shared Wi-Fi/mobile NAT can group users. Cloudflare documents this binding as local to a point of presence and eventually consistent, so it is an abuse throttle rather than exact global accounting. The project-ref binding must point only to the approved staging project.
+Rate controls are distinct:
+- **Per client:** Worker binding, proposed 30 per 60 seconds per hashed IP.
+- **Global:** the registration Edge Function calls `consume_business_card_rate_limit` with 600 per 60 seconds.
+- **Per card/token:** registration RPC cooldown of 2 seconds.
 
-## Historical events
+Cloudflare documents Worker rate-limit state as local to a Cloudflare location and eventually consistent, so the per-client limit is an abuse throttle, not an exact global counter or accounting control. Its configured window supports 10 or 60 seconds. [Cloudflare Rate Limiting documentation](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
 
-Migration 017 imports only events with a source timestamp and a unique card/business or exact normalized business-name match. Ambiguous and unmatched names remain in nfc_events. Conflict handling inserts by legacy_event_id and only fills missing device/card attribution; it never overwrites an existing business_id, channel or timestamp. Migration 018 uses the card's business_id first, then a unique normalized name; it ignores rows with missing timestamp and leaves ambiguous rows unassigned.
+## SQL and function privileges
 
-## Test status
+Migration 016 explicitly revokes EXECUTE on `register_business_card_event_with_token(uuid,text,text)` from PUBLIC, anon and authenticated and grants it to `service_role`. It dynamically applies the same policy to `consume_business_card_rate_limit`, checks effective anon/authenticated/service_role access, and removes other direct grants while retaining the function owner. The RPC is therefore intended to be called through the server Edge Function; the Edge Function checks the gateway secret and uses its server-side service role.
 
-21 offline source assertions were executed in the isolated Node REPL against the branch contents and passed. The committed node:test Worker and static test files were not run because no local Node/Deno CLI or branch checkout is available. The mocked Worker behavior tests remain pending execution. No SQL was parsed by PostgreSQL. These checks do not verify deployed Cloudflare limits, SQL ACLs, triggers, RLS, or two-restaurant isolation; all remain pending in staging.
+Migration 016 also removes direct client INSERT on `app_business_events` and `nfc_events`, removes client grants on `app_business_card_tokens`, and grants the token table to `service_role`. This is consistent with the management Edge Function, which authenticates an approved administrator and writes tokens server-side. It must still be checked against the live staging ACL and management flows.
+
+Migration 018 revokes client EXECUTE on the SECURITY DEFINER legacy mirror and removes other explicit grantees except the owner. It replaces the function body but does not create, drop or reattach a trigger. The accessible branch interface did not expose a directory listing, and the expected 004 migration filename was not found at the tested paths. Therefore the exact existing trigger name/attachment and its historical creation migration are **not verified from this review**. The read-only catalog query reports enabled trigger metadata if present. Verify the attachment and run a staging insert-path test before accepting migration 018. The ACL of a trigger function and the trigger's actual firing behavior must be checked separately.
+
+Migration 010's token-table policy references `public.app_is_admin()`. The exact definition and live ACL were not established here. Migration 016/018 do not revoke its EXECUTE permission. The catalog query reports its SECURITY DEFINER flag and effective role permissions without returning its body. Check staging that the policy can still evaluate for legitimate administration and that no unintended client access exists.
+
+RLS policies and table ACLs are separate controls. The updated `registration-privilege-checks.sql` reports effective table privileges for anon, authenticated and service_role, whether RLS is enabled/forced, policy expressions, all public SECURITY DEFINER function metadata/EXECUTE access, and the mirror trigger definition. It is SELECT-only and does not return function bodies, credentials or event rows. It has not been run. Policy text and catalog results alone do not prove two-tenant runtime isolation.
+
+## Historical migration
+
+Migration 017:
+- requires a non-null source `created_at`;
+- attributes from a card's business, or a unique normalized exact name match; ambiguous/unmatched rows remain in legacy storage;
+- uses unique partial `legacy_event_id` and `ON CONFLICT` for idempotence;
+- does not update existing business, event type/channel or event timestamp on conflict; it only fills missing device/card attribution;
+- now aborts with a clear preflight error if duplicate non-null `legacy_event_id` values already exist, rather than attempting to build a conflicting unique index.
+
+No rows were queried and no migration was executed. Run `supabase/security/historical-event-reconciliation.sql` before and after a future staging import, comparing business/channel counts and unmatched/ambiguous totals. Add a staging review of timestamp preservation and existing-row conflicts before any execution. A failed uniqueness preflight requires a separately reviewed reconciliation plan; do not delete or reattribute rows to make the index pass.
+
+## Verification status and blockers
+
+- Source review: completed for Worker, tests, migrations 010/016/017/018, and read-only SQL diagnostics.
+- The exact 004 file and trigger attachment: not verified; remote file access available here fetches known paths but did not provide a directory listing.
+- `node --test workers/nq-central-card-gateway/src/index.test.mjs`: not run. No local checkout/Git or Node/Deno CLI is available in this environment.
+- `node --test supabase/security-test/staging-integration-static.mjs`: not run for the same reason. Static test assertions were expanded but are not reported as passed.
+- PostgreSQL syntax, effective grants, app_is_admin behavior, RLS, trigger association/firing and historical reconciliation: require the dedicated staging database; none were checked.
+- Worker rate binding and Edge Function gateway-secret behavior in a deployed environment: require staging deployment and end-to-end verification; no deployment was performed.
+- Two-business isolation: requires two staging users and business fixtures; no runtime test was performed.
+
+## Staging-only checklist for a later authorized validation
+
+1. Inspect the exact 004 migration and current catalog state. Use the read-only privilege SQL first; check RPC access for anon/authenticated/service_role, RLS plus effective table privileges, `app_is_admin()`, rate-limit function ACL, and mirror trigger attachment/enabled state.
+2. Confirm the dedicated staging function endpoint and Worker project ref match exactly; provision only a test rate-limit binding with a unique namespace and a staging-only gateway secret.
+3. Exercise the Edge Function directly without the gateway secret (must be rejected), then through the Worker with valid/invalid/revoked/rotated tokens and active/paused/archived cards.
+4. Verify the Worker rejects wrong origin, method, media type, oversize body, non-staging upstream, and rate-limited calls. Confirm no response/log includes the gateway secret.
+5. Sign in as a user for Business A and Business B. Confirm each portal, export and event history returns only its own `business_id`; attempt cross-business reads and writes.
+6. Run historical count reconciliation before and after an approved staging import. Compare counts by business/channel, missing-date and ambiguous-name totals, and verify no pre-existing attribution or timestamps changed.
+7. Repeat the historical migration in staging only after review to demonstrate idempotence; compare `legacy_event_id` counts and ensure the second run inserts no duplicates.
