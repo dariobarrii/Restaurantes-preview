@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql] = await Promise.all([
+const [index, card, rpc, issuer, eventMigration, mirrorMigration, historyMigration, worker, privilegeSql, wranglerExample] = await Promise.all([
   readFile("index.html","utf8"),
   readFile("card.html","utf8"),
   readFile("supabase/functions/register-business-card-event/index.ts","utf8"),
@@ -72,4 +72,30 @@ test("token and historical mapping checks stay server-side and ambiguity-safe", 
   assert.doesNotMatch(historyMigration,/created_at\s*=\s*EXCLUDED\.created_at/i);
   assert.match(mirrorMigration,/name_match_count <> 1/);
   assert.doesNotMatch(mirrorMigration,/Veta|Tzura|Feral/);
+});
+
+test("gateway body and response handling is bounded and secret-safe", () => {
+  assert.match(worker,/readBounded\(request, 2048\)/);
+  assert.match(worker,/readBounded\(response, 4096\)/);
+  assert.match(worker,/publicUpstreamResult/);
+  assert.match(worker,/url\.pathname !== ["']\/functions\/v1\/register-business-card-event/);
+  assert.match(worker,/redirect:\s*["']manual["']/);
+  assert.match(wranglerExample,/name = ["']RATE_LIMITER["']/);
+  assert.match(wranglerExample,/limit = 30/);
+  assert.match(wranglerExample,/period = 60/);
+  assert.doesNotMatch(wranglerExample,/NQ_GATEWAY_SHARED_SECRET\s*=/);
+  assert.match(wranglerExample,/staging-project-ref/);
+});
+
+test("historical import is idempotent and does not rewrite attribution or event time", () => {
+  assert.match(historyMigration,/duplicate_preflight/);
+  assert.match(historyMigration,/CREATE UNIQUE INDEX IF NOT EXISTS app_business_events_legacy_event_id_uidx/);
+  assert.match(historyMigration,/e\.created_at IS NOT NULL/);
+  assert.match(historyMigration,/ON CONFLICT \(legacy_event_id\) WHERE legacy_event_id IS NOT NULL/);
+  const conflictUpdate = historyMigration.match(/DO UPDATE SET([\s\S]*?);/i)?.[1] || "";
+  assert.match(conflictUpdate,/device_type/);
+  assert.match(conflictUpdate,/card_id/);
+  assert.doesNotMatch(conflictUpdate,/business_id|event_type|created_at|legacy_event_id/);
+  assert.match(historyMigration,/count\(\*\) = 1/);
+  assert.doesNotMatch(historyMigration,/Veta|Tzura|Feral/);
 });
