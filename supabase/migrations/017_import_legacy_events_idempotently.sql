@@ -19,6 +19,24 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Legacy event columns do not match the reviewed source schema';
   END IF;
+  IF EXISTS (
+    SELECT required.table_name, required.column_name
+    FROM (VALUES
+      ('nfc_events', 'device_type'),
+      ('nfc_events', 'card_id'),
+      ('app_business_events', 'legacy_event_id'),
+      ('app_business_events', 'device_type'),
+      ('app_business_events', 'card_id')
+    ) AS required(table_name, column_name)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM information_schema.columns AS c
+      WHERE c.table_schema='public'
+        AND c.table_name=required.table_name
+        AND c.column_name=required.column_name
+    )
+  ) THEN
+    RAISE EXCEPTION 'Required device/card/legacy event columns are missing';
+  END IF;
 END
 $preflight$;
 
@@ -42,7 +60,7 @@ WITH source_events AS (
     ON card.id = e.card_id
   LEFT JOIN LATERAL (
     SELECT
-      CASE WHEN pg_catalog.count(*) = 1 THEN pg_catalog.min(b.id) ELSE NULL END AS business_id
+      CASE WHEN pg_catalog.count(*) = 1 THEN (pg_catalog.array_agg(b.id))[1] ELSE NULL END AS business_id
     FROM public.app_businesses AS b
     WHERE pg_catalog.lower(pg_catalog.trim(b.name)) =
           pg_catalog.lower(pg_catalog.trim(e.restaurant))
@@ -54,20 +72,20 @@ resolved AS (
     legacy_id,
     COALESCE(card_business_id, name_business_id) AS business_id,
     event AS event_type,
-    created_at,
+    COALESCE(created_at, pg_catalog.now()) AS created_at,
     'legacy_nfc_events'::text AS source,
     device_type,
     matched_card_id AS card_id
   FROM source_events
   WHERE COALESCE(card_business_id, name_business_id) IS NOT NULL
 )
-INSERT INTO public.app_business_events
+INSERT INTO public.app_business_events AS existing
   (business_id, event_type, created_at, source, device_type, legacy_event_id, card_id)
 SELECT business_id, event_type, created_at, source, device_type, legacy_id, card_id
 FROM resolved
 ON CONFLICT (legacy_event_id) WHERE legacy_event_id IS NOT NULL
 DO UPDATE SET
-  device_type = COALESCE(public.app_business_events.device_type, EXCLUDED.device_type),
-  card_id = COALESCE(public.app_business_events.card_id, EXCLUDED.card_id);
+  device_type = COALESCE(existing.device_type, EXCLUDED.device_type),
+  card_id = COALESCE(existing.card_id, EXCLUDED.card_id);
 
 COMMIT;
