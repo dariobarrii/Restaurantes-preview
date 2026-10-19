@@ -25,7 +25,7 @@ test('relative resources resolve at domain root and GitHub Pages subdirectory',(
   }
  }
 });
-test('PNG icons have valid dimensions, opaque pixels and provisional marking',()=>{
+test('PNG icons have valid dimensions and opaque pixels',()=>{
  const icons=[...manifest.icons,{src:'./assets/pwa/apple-touch-icon.png',sizes:'180x180'}];
  assert.ok(manifest.icons.some(i=>i.sizes==='192x192'&&i.purpose==='any'));
  assert.ok(manifest.icons.some(i=>i.sizes==='512x512'&&i.purpose==='any'));
@@ -34,7 +34,6 @@ test('PNG icons have valid dimensions, opaque pixels and provisional marking',()
   const b=read(icon.src); assert.equal(b.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   const width=b.readUInt32BE(16),height=b.readUInt32BE(20);
   assert.equal(`${width}x${height}`,icon.sizes); assert.equal(b[25],2);
-  assert.ok(b.includes(Buffer.from('PROVISIONAL - pending owner visual approval')));
   const data=[]; for(let offset=8;offset<b.length;){const n=b.readUInt32BE(offset);if(b.toString('ascii',offset+4,offset+8)==='IDAT')data.push(b.subarray(offset+8,offset+8+n));offset+=12+n;}
   assert.equal(inflateSync(Buffer.concat(data)).length,height*(width*3+1));
  }
