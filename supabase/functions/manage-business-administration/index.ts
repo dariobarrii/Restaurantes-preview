@@ -19,6 +19,23 @@ const statuses = new Set(["pending","approved","suspended"]);
 const roles = new Set(["owner","manager","viewer"]);
 
 class PayloadTooLargeError extends Error {}
+class ResultLimitError extends Error {}
+
+const ADMIN_PAGE_SIZE = 1000;
+const MAX_ADMIN_RESULT_ROWS = 50000;
+
+async function readAllRows(buildPage: (from: number, to: number) => any): Promise<any[]> {
+  const rows: any[] = [];
+  for (let from = 0; from < MAX_ADMIN_RESULT_ROWS; from += ADMIN_PAGE_SIZE) {
+    const to = Math.min(from + ADMIN_PAGE_SIZE - 1, MAX_ADMIN_RESULT_ROWS - 1);
+    const { data, error } = await buildPage(from, to);
+    if (error) throw error;
+    const page = Array.isArray(data) ? data : [];
+    rows.push(...page);
+    if (page.length < ADMIN_PAGE_SIZE) return rows;
+  }
+  throw new ResultLimitError();
+}
 
 function safeTarget(value: unknown): string | null {
   if (typeof value !== "string" || value.length > 2048) return null;
@@ -97,6 +114,21 @@ Deno.serve(async (req: Request) => {
     const input = await readBody(req);
     const action = input.action;
     if (typeof action !== "string") return json({ error: "invalid_request" }, 400, origin);
+    const fieldsByAction: Record<string, string[]> = {
+      dashboard: ["action"], profiles: ["action"], cards: ["action"],
+      business_create: ["action", "name", "slug", "category"],
+      business_update: ["action", "id", "name", "slug"],
+      business_status: ["action", "id", "status"],
+      profile_status: ["action", "user_id", "status"],
+      member_upsert: ["action", "user_id", "business_id", "member_role"],
+      card_create: ["action", "business_id", "channel", "label", "target_url"],
+      card_update: ["action", "id", "label", "target_url", "status", "archived"],
+    };
+    const allowedFields = fieldsByAction[action];
+    if (!allowedFields) return json({ error: "unknown_action" }, 400, origin);
+    if (Object.keys(input).some((field) => !allowedFields.includes(field))) {
+      return json({ error: "unexpected_field" }, 400, origin);
+    }
 
     if (action === "profiles") {
       const { data, error } = await admin.from("app_profiles")
@@ -106,22 +138,19 @@ Deno.serve(async (req: Request) => {
     }
     if (action === "dashboard") {
       const [businesses, events, reviews, profiles] = await Promise.all([
-        admin.from("app_businesses").select("*").order("name"),
-        admin.from("app_business_events").select("business_id,event_type,created_at,device_type,source").order("created_at",{ascending:false}).limit(10000),
-        admin.from("app_business_review_snapshots").select("business_id,platform,review_count,captured_at").order("captured_at",{ascending:false}).limit(5000),
-        admin.from("app_profiles").select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}),
+        readAllRows((from, to) => admin.from("app_businesses").select("*").order("name").range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_events").select("business_id,event_type,created_at,device_type,source").order("created_at",{ascending:false}).range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_review_snapshots").select("business_id,platform,review_count,captured_at").order("captured_at",{ascending:false}).range(from, to)),
+        readAllRows((from, to) => admin.from("app_profiles").select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to)),
       ]);
-      const failure = [businesses.error,events.error,reviews.error,profiles.error].find(Boolean);
-      if (failure) return json({ error: "admin_read_failed" }, 503, origin);
-      return json({ businesses: businesses.data || [], events: events.data || [], reviews: reviews.data || [], profiles: profiles.data || [] }, 200, origin);
+      return json({ businesses, events, reviews, profiles }, 200, origin);
     }
     if (action === "cards") {
       const [cards, events] = await Promise.all([
-        admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,archived_at").order("channel"),
-        admin.from("app_business_events").select("card_id,created_at").not("card_id","is",null).order("created_at",{ascending:false}).limit(10000),
+        readAllRows((from, to) => admin.from("app_business_cards").select("id,business_id,label,channel,target_url,status,archived_at").order("channel").range(from, to)),
+        readAllRows((from, to) => admin.from("app_business_events").select("card_id,created_at").not("card_id","is",null).order("created_at",{ascending:false}).range(from, to)),
       ]);
-      if (cards.error || events.error) return json({ error: "admin_read_failed" }, 503, origin);
-      return json({ cards: cards.data || [], events: events.data || [] }, 200, origin);
+      return json({ cards, events }, 200, origin);
     }
     if (action === "business_create") {
       const name = typeof input.name === "string" ? input.name.trim() : "";
@@ -222,6 +251,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: "unknown_action" }, 400, origin);
   } catch (error) {
     if (error instanceof PayloadTooLargeError) return json({ error: "request_too_large" }, 413, cleanOrigin(req) || "");
+    if (error instanceof ResultLimitError) return json({ error: "result_limit_exceeded" }, 503, cleanOrigin(req) || "");
     return json({ error: "invalid_request" }, 400, cleanOrigin(req) || "");
   }
 });
