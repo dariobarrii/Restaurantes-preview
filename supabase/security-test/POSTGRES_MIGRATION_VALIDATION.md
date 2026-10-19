@@ -2,7 +2,9 @@
 
 ## Status
 
-This plan is prepared for review. It has **not** been executed. No SQL has been run against Supabase in this phase, no fixture has run, and the SQL has not yet been validated by PostgreSQL.
+The authorized read-only staging inspection was completed on 2026-10-19. The real server reports PostgreSQL 17.11 (170011). No staging writes or acceptance fixture were executed. Local migration execution is **blocked**: PostgreSQL 17, psql, pg_dump, and a schema-export connection are not available in the inspected environment. No schema-only dump or local database was created. The migration SQL has not yet been validated by PostgreSQL.
+
+See [the validation report](./STAGING_VALIDATION_2026-10-19.md) and [sanitized metadata evidence](./results/2026-10-19-staging-readonly.json). Node source checks and mocked local handler tests are not a substitute for the blocked PostgreSQL validation.
 
 ## Compatibility gate
 
@@ -61,7 +63,7 @@ Run from PowerShell. Set the staging connection URL only in the current process 
    if ($LASTEXITCODE -ne 0) { throw "Schema restore failed; stop." }
    ~~~
 
-   Before restoring, create only local NOLOGIN roles required by the dump (including grantees and any owners referenced by the schema); do not add passwords or reuse production/staging credentials. Preserve the ACL statements from the dump. If the restore reports missing extensions, unsupported managed objects, or role/owner mismatches, stop and record the limitation. Do not strip ACLs or ownership and call the result equivalent.
+   Before restoring, recreate the required local role attributes and memberships, without copying passwords. A schema-only pg_dump does not export roles. Staging's postgres owner is NOT SUPERUSER and has BYPASSRLS; service_role has BYPASSRLS, while anon/authenticated do not. A default local postgres superuser is therefore not a faithful replacement for that owner. Use an isolated local cluster with a separate bootstrap operator so the staging owner role can be recreated accurately. Keep non-login application roles NOLOGIN. Preserve ownership, default ACLs, grants and role inheritance from the metadata evidence. If the restore reports missing extensions, unsupported managed objects, or role/owner mismatches, stop and record the limitation. Do not strip ACLs or ownership and call the result equivalent.
 
 5. On the disposable local clone only, run each migration twice with stop-on-error. Run 020 twice before 021 twice:
 
@@ -86,7 +88,9 @@ Run from PowerShell. Set the staging connection URL only in the current process 
    - sequence owner matching table owner, increment of 1, non-cycling configuration, range and next value beyond existing IDs;
    - authenticated having only profile full_name UPDATE and review snapshot INSERT on business_id, platform, review_count;
    - no effective browser table-level INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN, including inherited role grants;
-   - no anon/authenticated privileges on either dashboard ID sequence, and only the intended review sequence USAGE for authenticated/service_role;
+   - 020 removing browser sequence grants inherited from staging's default ACLs before committing;
+   - no browser privileges on the event/legacy NFC ID sequences; only USAGE for authenticated on the review sequence, with service_role review USAGE retained;
+   - the full_name UPDATE grant occurring after the final column ACL cleanup and no requirement for table-wide review INSERT;
    - portal card reads coming from manage-business-administration while direct authenticated app_business_cards SELECT stays unavailable.
 
 7. Record the exact PostgreSQL server version, both migration pass results, any warnings, and the generated local catalog outputs. Do not label this SQL validation passed based on source inspection or a nonmatching local server.

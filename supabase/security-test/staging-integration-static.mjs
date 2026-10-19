@@ -248,6 +248,38 @@ test("dashboard permissions revoke direct writes alongside server replacement op
   assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO authenticated"));
 });
 
+test("profile column grant survives the last column ACL cleanup", () => {
+  const cleanupEnd = dashboardMigration.indexOf("$revoke_column_acl$;");
+  const grant = "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated";
+  const grantAt = dashboardMigration.indexOf(grant);
+  assert.ok(cleanupEnd >= 0, "column ACL cleanup must be explicit");
+  assert.ok(grantAt > cleanupEnd, "full_name grant must follow the cleanup that revokes column ACLs");
+  assert.equal(dashboardMigration.indexOf(grant, grantAt + 1), -1, "keep one final profile grant");
+  assert.ok(grantAt < dashboardMigration.indexOf("DO $verify$"), "grant must precede effective privilege verification");
+});
+
+test("legacy NFC sequence writes cannot survive the dashboard privilege migration", () => {
+  const sequenceBlock = dashboardMigration.match(/DO \$dashboard_sequence_acl\$([\s\S]*?)\$dashboard_sequence_acl\$;/)?.[1] || "";
+  assert.match(sequenceBlock, /'nfc_events'/);
+  assert.match(sequenceBlock, /REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated/);
+  assert.match(dashboardMigration, /has_sequence_privilege\('anon',v_legacy_sequence,'USAGE,SELECT,UPDATE'\)/);
+  assert.match(dashboardMigration, /has_sequence_privilege\('authenticated',v_legacy_sequence,'USAGE,SELECT,UPDATE'\)/);
+});
+
+test("020 clears inherited default sequence ACLs before it commits", () => {
+  const revokeAt = schemaMigration.indexOf("REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated");
+  assert.ok(revokeAt >= 0, "Supabase default ACLs must not expose newly created sequences between 020 and 021");
+  assert.ok(revokeAt < schemaMigration.indexOf("ALTER SEQUENCE %s RESTART WITH %s"));
+  assert.match(schemaMigration, /has_sequence_privilege\('anon',v_sequence,'USAGE,SELECT,UPDATE'\)/);
+  assert.match(schemaMigration, /has_sequence_privilege\('authenticated',v_sequence,'USAGE,SELECT,UPDATE'\)/);
+});
+
+test("review verification requires allowed columns without a table-wide INSERT grant", () => {
+  assert.doesNotMatch(dashboardMigration, /NOT\s+pg_catalog\.has_table_privilege\('authenticated','public\.app_business_review_snapshots','INSERT'\)/);
+  assert.match(dashboardMigration, /OR pg_catalog\.has_table_privilege\('authenticated','public\.app_business_review_snapshots','INSERT'\)/);
+  assert.match(dashboardMigration, /has_column_privilege\([\s\S]*'authenticated','public\.app_business_review_snapshots','business_id','INSERT'/);
+});
+
 test("dashboard preflight is catalog-only and contains a staged rollback plan", () => {
   for (const forbidden of ["INSERT ","UPDATE ","DELETE ","ALTER ","CREATE ","DROP ","TRUNCATE "]) {
     assert.ok(!dashboardPreflight.toUpperCase().includes(forbidden));

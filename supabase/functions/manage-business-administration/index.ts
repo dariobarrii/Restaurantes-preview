@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
       const slug = typeof input.slug === "string" ? input.slug.trim().toLowerCase() : "";
       const category = typeof input.category === "string" ? input.category : "";
       if (!name || name.length > 120 || !slugPattern.test(slug) || !categories.has(category)) return json({ error: "invalid_business" }, 400, origin);
-      const { data, error } = await admin.from("app_businesses").insert({ name, slug, category, status: "approved" }).select("id").single();
+      const { data, error } = await admin.from("app_businesses").insert({ id: crypto.randomUUID(), name, slug, category, status: "approved" }).select("id").single();
       if (error) return json({ error: "business_write_failed" }, 409, origin);
       return json({ ok: true, id: data.id }, 201, origin);
     }
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
       if (businessError) return json({ error: "business_lookup_failed" }, 503, origin);
       if (business?.status !== "approved") return json({ error: "business_not_approved" }, 409, origin);
       const { data, error } = await admin.from("app_business_cards")
-        .insert({ business_id: input.business_id, label: input.label.trim(), channel: input.channel, target_url: targetUrl, status: "active" })
+        .insert({ id: crypto.randomUUID(), business_id: input.business_id, label: input.label.trim(), channel: input.channel, target_url: targetUrl, status: "active" })
         .select("id").single();
       if (error) return json({ error: "card_write_failed" }, 409, origin);
       return json({ ok: true, id: data.id }, 201, origin);

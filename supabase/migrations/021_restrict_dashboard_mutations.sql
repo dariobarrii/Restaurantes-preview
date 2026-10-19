@@ -81,14 +81,15 @@ DECLARE
   v_sequence text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'app_business_events','app_business_review_snapshots'
+    'app_business_events','app_business_review_snapshots','nfc_events'
   ] LOOP
     v_sequence := pg_catalog.pg_get_serial_sequence('public.' || t, 'id');
     IF v_sequence IS NULL THEN
-      RAISE EXCEPTION 'Migration 020 must establish the public.% ID sequence first', t;
+      RAISE EXCEPTION 'Expected owned ID sequence is missing for public.%', t;
     END IF;
     -- Sequence ACLs are independent of table ACLs. Clear pre-existing direct
-    -- and PUBLIC grants on both dashboard ID sequences before adding any need.
+    -- and PUBLIC grants before adding any need. Legacy nfc_events inserts are
+    -- server-only too: browser roles must not call nextval/setval on its sequence.
     EXECUTE pg_catalog.format(
       'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
       v_sequence::regclass
@@ -136,7 +137,6 @@ $revoke_maintain_acl$;
 -- never writable by a browser client.
 REVOKE ALL PRIVILEGES ON TABLE public.app_profiles FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.app_profiles TO authenticated;
-GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated;
 GRANT SELECT, UPDATE ON TABLE public.app_profiles TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_members FROM PUBLIC, anon, authenticated;
@@ -174,6 +174,9 @@ BEGIN
   END LOOP;
 END
 $revoke_column_acl$;
+
+-- Add legitimate column writes only after the final column ACL cleanup.
+GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated;
 
 GRANT SELECT ON TABLE public.app_business_review_snapshots TO authenticated;
 -- The client may submit only the tenant, capture kind, and manually observed
@@ -246,7 +249,7 @@ BEGIN
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_events','UPDATE')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_events','DELETE')
      OR NOT pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','SELECT')
-     OR NOT pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','INSERT')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','INSERT')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','UPDATE')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','DELETE')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_review_snapshots','TRUNCATE')
@@ -342,6 +345,7 @@ DECLARE
   t text;
   r text;
   p text;
+  v_legacy_sequence text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'app_businesses','app_business_cards','app_profiles','app_business_members',
@@ -416,6 +420,13 @@ BEGIN
        'service_role', pg_catalog.pg_get_serial_sequence(
          'public.app_business_review_snapshots','id'), 'USAGE') THEN
     RAISE EXCEPTION 'Effective dashboard ID sequence privileges do not match the portal flow';
+  END IF;
+
+  v_legacy_sequence := pg_catalog.pg_get_serial_sequence('public.nfc_events','id');
+  IF v_legacy_sequence IS NULL
+     OR pg_catalog.has_sequence_privilege('anon',v_legacy_sequence,'USAGE,SELECT,UPDATE')
+     OR pg_catalog.has_sequence_privilege('authenticated',v_legacy_sequence,'USAGE,SELECT,UPDATE') THEN
+    RAISE EXCEPTION 'Browser access to the legacy NFC ID sequence remains';
   END IF;
 END
 $verify_restricted_acl$;

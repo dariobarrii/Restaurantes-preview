@@ -1,0 +1,2070 @@
+{
+  "date": "2026-10-19",
+  "project": {
+    "name": "NQ Central Security Test",
+    "ref": "rxxbmqilnozcnpwguqga"
+  },
+  "source_commit": "f9d6cb94b856044650e3bde1bdc2e526132fcc0d",
+  "postgresql": {
+    "server_version": "17.11",
+    "server_version_num": 170011,
+    "inspection_role": "postgres"
+  },
+  "scope": {
+    "sql_statements": "SELECT or WITH ... SELECT only",
+    "data_writes_issued": false,
+    "migrations_applied": false,
+    "deployments": false,
+    "individual_event_rows_returned": false,
+    "function_bodies_returned": false,
+    "credentials_returned": false,
+    "schema_dump_obtained": false,
+    "local_postgresql_executed": false
+  },
+  "preflights": {
+    "dashboard": [
+      {
+        "section": 1,
+        "rows": [
+          {
+            "table_name": "app_business_cards",
+            "column_name": "archived_at",
+            "expected_type": "timestamp with time zone",
+            "actual_type": "timestamp with time zone",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "business_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "channel",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "label",
+            "expected_type": "text",
+            "actual_type": null,
+            "target_matches": false,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "status",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "column_name": "target_url",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_events",
+            "column_name": "business_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_events",
+            "column_name": "created_at",
+            "expected_type": "timestamp with time zone",
+            "actual_type": "timestamp with time zone",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_events",
+            "column_name": "event_type",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_members",
+            "column_name": "business_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_members",
+            "column_name": "member_role",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_members",
+            "column_name": "user_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_review_snapshots",
+            "column_name": "business_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_review_snapshots",
+            "column_name": "platform",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_review_snapshots",
+            "column_name": "review_count",
+            "expected_type": "integer",
+            "actual_type": "integer",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_business_review_snapshots",
+            "column_name": "source",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_businesses",
+            "column_name": "category",
+            "expected_type": "text",
+            "actual_type": null,
+            "target_matches": false,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_businesses",
+            "column_name": "id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_businesses",
+            "column_name": "name",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_businesses",
+            "column_name": "slug",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_businesses",
+            "column_name": "status",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_profiles",
+            "column_name": "full_name",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_profiles",
+            "column_name": "role",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_profiles",
+            "column_name": "status",
+            "expected_type": "text",
+            "actual_type": "text",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          },
+          {
+            "table_name": "app_profiles",
+            "column_name": "user_id",
+            "expected_type": "uuid",
+            "actual_type": "uuid",
+            "target_matches": true,
+            "safe_for_020_preflight": true
+          }
+        ]
+      },
+      {
+        "section": 2,
+        "rows": [
+          {
+            "table_name": "app_business_cards",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": true,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": true,
+            "auth_select": true,
+            "auth_insert": true,
+            "auth_update": true,
+            "auth_delete": true,
+            "auth_truncate": true,
+            "auth_references": true,
+            "auth_trigger": true,
+            "auth_maintain": true,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          },
+          {
+            "table_name": "app_business_events",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": false,
+            "auth_select": true,
+            "auth_insert": false,
+            "auth_update": false,
+            "auth_delete": false,
+            "auth_truncate": false,
+            "auth_references": false,
+            "auth_trigger": false,
+            "auth_maintain": false,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          },
+          {
+            "table_name": "app_business_members",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": false,
+            "auth_select": true,
+            "auth_insert": false,
+            "auth_update": false,
+            "auth_delete": false,
+            "auth_truncate": false,
+            "auth_references": false,
+            "auth_trigger": false,
+            "auth_maintain": false,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          },
+          {
+            "table_name": "app_business_review_snapshots",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": false,
+            "auth_select": true,
+            "auth_insert": false,
+            "auth_update": false,
+            "auth_delete": false,
+            "auth_truncate": false,
+            "auth_references": false,
+            "auth_trigger": false,
+            "auth_maintain": false,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          },
+          {
+            "table_name": "app_businesses",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": true,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": true,
+            "auth_select": true,
+            "auth_insert": true,
+            "auth_update": true,
+            "auth_delete": true,
+            "auth_truncate": true,
+            "auth_references": true,
+            "auth_trigger": true,
+            "auth_maintain": true,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          },
+          {
+            "table_name": "app_profiles",
+            "rls_enabled": true,
+            "force_rls": false,
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "anon_truncate": false,
+            "anon_references": false,
+            "anon_trigger": false,
+            "anon_maintain": false,
+            "auth_select": true,
+            "auth_insert": false,
+            "auth_update": false,
+            "auth_delete": false,
+            "auth_truncate": false,
+            "auth_references": false,
+            "auth_trigger": false,
+            "auth_maintain": false,
+            "service_select": true,
+            "service_insert": true,
+            "service_update": true
+          }
+        ]
+      },
+      {
+        "section": 3,
+        "rows": [
+          {
+            "auth_can_update_full_name": false,
+            "auth_can_update_role": false,
+            "auth_can_update_status": false,
+            "admin_helper_exists": true
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "rows": [
+          {
+            "schemaname": "public",
+            "tablename": "app_business_cards",
+            "policyname": "nq_test_active_card_select",
+            "cmd": "SELECT",
+            "roles": "{anon,authenticated}"
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_business_events",
+            "policyname": "app_business_events_select_member_admin",
+            "cmd": "SELECT",
+            "roles": "{authenticated}"
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_business_members",
+            "policyname": "nq_test_membership_self_select",
+            "cmd": "SELECT",
+            "roles": "{authenticated}"
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_business_review_snapshots",
+            "policyname": "app_business_reviews_select_member_admin",
+            "cmd": "SELECT",
+            "roles": "{authenticated}"
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_businesses",
+            "policyname": "nq_test_approved_business_select",
+            "cmd": "SELECT",
+            "roles": "{anon,authenticated}"
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_profiles",
+            "policyname": "nq_test_profile_self_select",
+            "cmd": "SELECT",
+            "roles": "{authenticated}"
+          }
+        ]
+      },
+      {
+        "section": 5,
+        "rows": [
+          {
+            "function_signature": "consume_business_card_rate_limit(text,integer,integer)",
+            "owner": "postgres",
+            "security_definer": true,
+            "anon_execute": false,
+            "authenticated_execute": false,
+            "service_role_execute": true
+          },
+          {
+            "function_signature": "private.app_is_admin()",
+            "owner": "postgres",
+            "security_definer": true,
+            "anon_execute": false,
+            "authenticated_execute": true,
+            "service_role_execute": false
+          },
+          {
+            "function_signature": "register_business_card_event_with_token(uuid,text,text)",
+            "owner": "postgres",
+            "security_definer": true,
+            "anon_execute": false,
+            "authenticated_execute": false,
+            "service_role_execute": true
+          }
+        ]
+      },
+      {
+        "section": 6,
+        "rows": []
+      }
+    ],
+    "registration": [
+      {
+        "section": 1,
+        "rows": [
+          {
+            "schema_name": "private",
+            "identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "owner_is_superuser": false,
+            "owner_bypasses_rls": true,
+            "security_definer": true,
+            "public_execute_acl": false,
+            "direct_acl_entries": [
+              "postgres:EXECUTE",
+              "authenticated:EXECUTE"
+            ],
+            "anon_can_execute": false,
+            "authenticated_can_execute": true,
+            "service_role_can_execute": false
+          },
+          {
+            "schema_name": "public",
+            "identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "owner_is_superuser": false,
+            "owner_bypasses_rls": true,
+            "security_definer": true,
+            "public_execute_acl": false,
+            "direct_acl_entries": [
+              "postgres:EXECUTE",
+              "service_role:EXECUTE"
+            ],
+            "anon_can_execute": false,
+            "authenticated_can_execute": false,
+            "service_role_can_execute": true
+          },
+          {
+            "schema_name": "public",
+            "identity": "consume_nfc_event_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "owner_is_superuser": false,
+            "owner_bypasses_rls": true,
+            "security_definer": true,
+            "public_execute_acl": false,
+            "direct_acl_entries": [
+              "postgres:EXECUTE",
+              "service_role:EXECUTE"
+            ],
+            "anon_can_execute": false,
+            "authenticated_can_execute": false,
+            "service_role_can_execute": true
+          },
+          {
+            "schema_name": "public",
+            "identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "owner_is_superuser": false,
+            "owner_bypasses_rls": true,
+            "security_definer": true,
+            "public_execute_acl": false,
+            "direct_acl_entries": [
+              "postgres:EXECUTE",
+              "service_role:EXECUTE"
+            ],
+            "anon_can_execute": false,
+            "authenticated_can_execute": false,
+            "service_role_can_execute": true
+          },
+          {
+            "schema_name": "public",
+            "identity": "register_nfc_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "owner_is_superuser": false,
+            "owner_bypasses_rls": true,
+            "security_definer": true,
+            "public_execute_acl": false,
+            "direct_acl_entries": [
+              "postgres:EXECUTE",
+              "service_role:EXECUTE"
+            ],
+            "anon_can_execute": false,
+            "authenticated_can_execute": false,
+            "service_role_can_execute": true
+          }
+        ]
+      },
+      {
+        "section": 2,
+        "rows": [
+          {
+            "schema_name": "private",
+            "authenticated_usage": true,
+            "anon_usage": false,
+            "direct_acl_entries": [
+              "postgres:CREATE",
+              "postgres:USAGE",
+              "authenticated:USAGE"
+            ]
+          }
+        ]
+      },
+      {
+        "section": 3,
+        "rows": [
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limit_maintenance",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limits",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_tokens",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_business_cards",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_business_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_businesses",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "app_profiles",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "private",
+            "function_identity": "private.app_is_admin()",
+            "function_owner": "postgres",
+            "table_name": "nfc_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limit_maintenance",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limits",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_tokens",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_business_cards",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_business_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_businesses",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "app_profiles",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "consume_business_card_rate_limit(text,integer,integer)",
+            "function_owner": "postgres",
+            "table_name": "nfc_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limit_maintenance",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_rate_limits",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_business_card_tokens",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_business_cards",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_business_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_businesses",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "app_profiles",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          },
+          {
+            "function_schema": "public",
+            "function_identity": "register_business_card_event_with_token(uuid,text,text)",
+            "function_owner": "postgres",
+            "table_name": "nfc_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "owner_select": true,
+            "owner_insert": true,
+            "owner_update": true,
+            "owner_delete": true
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "rows": [
+          {
+            "table_name": "app_business_card_tokens",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": false,
+            "authenticated_insert": false,
+            "authenticated_update": false,
+            "authenticated_delete": false,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "app_business_cards",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "anon:MAINTAIN",
+              "anon:SELECT",
+              "authenticated:DELETE",
+              "authenticated:INSERT",
+              "authenticated:MAINTAIN",
+              "authenticated:REFERENCES",
+              "authenticated:SELECT",
+              "authenticated:TRIGGER",
+              "authenticated:TRUNCATE",
+              "authenticated:UPDATE",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": true,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": true,
+            "authenticated_insert": true,
+            "authenticated_update": true,
+            "authenticated_delete": true,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "app_business_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "authenticated:SELECT",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": true,
+            "authenticated_insert": false,
+            "authenticated_update": false,
+            "authenticated_delete": false,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "app_business_members",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "authenticated:SELECT",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": true,
+            "authenticated_insert": false,
+            "authenticated_update": false,
+            "authenticated_delete": false,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "app_businesses",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "anon:MAINTAIN",
+              "anon:SELECT",
+              "authenticated:DELETE",
+              "authenticated:INSERT",
+              "authenticated:MAINTAIN",
+              "authenticated:REFERENCES",
+              "authenticated:SELECT",
+              "authenticated:TRIGGER",
+              "authenticated:TRUNCATE",
+              "authenticated:UPDATE",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": true,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": true,
+            "authenticated_insert": true,
+            "authenticated_update": true,
+            "authenticated_delete": true,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "app_profiles",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "authenticated:SELECT",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": true,
+            "authenticated_insert": false,
+            "authenticated_update": false,
+            "authenticated_delete": false,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          },
+          {
+            "table_name": "nfc_events",
+            "rls_enabled": true,
+            "rls_forced": false,
+            "direct_acl_entries": [
+              "postgres:DELETE",
+              "postgres:INSERT",
+              "postgres:MAINTAIN",
+              "postgres:REFERENCES",
+              "postgres:SELECT",
+              "postgres:TRIGGER",
+              "postgres:TRUNCATE",
+              "postgres:UPDATE",
+              "service_role:DELETE",
+              "service_role:INSERT",
+              "service_role:MAINTAIN",
+              "service_role:REFERENCES",
+              "service_role:SELECT",
+              "service_role:TRIGGER",
+              "service_role:TRUNCATE",
+              "service_role:UPDATE"
+            ],
+            "anon_select": false,
+            "anon_insert": false,
+            "anon_update": false,
+            "anon_delete": false,
+            "authenticated_select": false,
+            "authenticated_insert": false,
+            "authenticated_update": false,
+            "authenticated_delete": false,
+            "service_role_select": true,
+            "service_role_insert": true,
+            "service_role_update": true,
+            "service_role_delete": true
+          }
+        ]
+      },
+      {
+        "section": 5,
+        "rows": [
+          {
+            "schemaname": "public",
+            "tablename": "app_business_cards",
+            "policyname": "nq_test_active_card_select",
+            "cmd": "SELECT",
+            "roles": "{anon,authenticated}",
+            "qual": "((status = 'active'::text) AND (archived_at IS NULL) AND (EXISTS ( SELECT 1\n   FROM app_businesses b\n  WHERE ((b.id = app_business_cards.business_id) AND (b.status = 'approved'::text)))))",
+            "with_check": null
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_business_events",
+            "policyname": "app_business_events_select_member_admin",
+            "cmd": "SELECT",
+            "roles": "{authenticated}",
+            "qual": "(private.app_is_admin() OR (EXISTS ( SELECT 1\n   FROM ((app_business_members m\n     JOIN app_profiles p ON ((p.user_id = m.user_id)))\n     JOIN app_businesses b ON ((b.id = m.business_id)))\n  WHERE ((m.business_id = app_business_events.business_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (p.status = 'approved'::text) AND (b.status = 'approved'::text)))))",
+            "with_check": null
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_business_members",
+            "policyname": "nq_test_membership_self_select",
+            "cmd": "SELECT",
+            "roles": "{authenticated}",
+            "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+            "with_check": null
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_businesses",
+            "policyname": "nq_test_approved_business_select",
+            "cmd": "SELECT",
+            "roles": "{anon,authenticated}",
+            "qual": "(status = 'approved'::text)",
+            "with_check": null
+          },
+          {
+            "schemaname": "public",
+            "tablename": "app_profiles",
+            "policyname": "nq_test_profile_self_select",
+            "cmd": "SELECT",
+            "roles": "{authenticated}",
+            "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+            "with_check": null
+          }
+        ]
+      },
+      {
+        "section": 6,
+        "rows": []
+      }
+    ],
+    "history": [
+      {
+        "section": 1,
+        "rows": [
+          {
+            "resolution": "card",
+            "channel": "nfc_tap",
+            "missing_source_date": 0,
+            "source_events_with_date": 50
+          },
+          {
+            "resolution": "card",
+            "channel": "qr_scan",
+            "missing_source_date": 0,
+            "source_events_with_date": 1
+          },
+          {
+            "resolution": "unique_name",
+            "channel": "nfc_tap",
+            "missing_source_date": 0,
+            "source_events_with_date": 12
+          },
+          {
+            "resolution": "unique_name",
+            "channel": "qr_scan",
+            "missing_source_date": 0,
+            "source_events_with_date": 1
+          }
+        ]
+      },
+      {
+        "section": 2,
+        "rows": [
+          {
+            "business_alias": "test_business_1",
+            "channel": "nfc_tap",
+            "expected_count": 62,
+            "imported_count": 0,
+            "difference": -62
+          },
+          {
+            "business_alias": "test_business_1",
+            "channel": "qr_scan",
+            "expected_count": 2,
+            "imported_count": 0,
+            "difference": -2
+          }
+        ]
+      },
+      {
+        "section": 3,
+        "rows": [
+          {
+            "imported_attribution_channel_or_date_mismatches": 0
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "rows": [
+          {
+            "duplicate_legacy_event_id_groups": 0
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "columns": [
+      {
+        "table_name": "app_business_card_rate_limit_maintenance",
+        "column_name": "id",
+        "data_type": "smallint",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_rate_limit_maintenance",
+        "column_name": "last_cleanup_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "clock_timestamp()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_rate_limits",
+        "column_name": "bucket_key",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_rate_limits",
+        "column_name": "window_started_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "clock_timestamp()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_rate_limits",
+        "column_name": "request_count",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": "1",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_rate_limits",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "clock_timestamp()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_tokens",
+        "column_name": "card_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_tokens",
+        "column_name": "token_hash",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_tokens",
+        "column_name": "active",
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "true",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_tokens",
+        "column_name": "last_event_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_card_tokens",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "business_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "channel",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "target_url",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_cards",
+        "column_name": "archived_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "business_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "event_type",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "source",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'central_app'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "legacy_event_id",
+        "data_type": "bigint",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "device_type",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_events",
+        "column_name": "card_id",
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_members",
+        "column_name": "business_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_members",
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_members",
+        "column_name": "member_role",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'owner'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_members",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "business_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "platform",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'google'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "review_count",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "captured_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_business_review_snapshots",
+        "column_name": "source",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'manual'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_businesses",
+        "column_name": "id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_businesses",
+        "column_name": "name",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_businesses",
+        "column_name": "slug",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_businesses",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "user_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "full_name",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "role",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'restaurant'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'pending'::text",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "app_profiles",
+        "column_name": "email",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "YES",
+        "identity_generation": "ALWAYS",
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "restaurant",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "event",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()",
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "device_type",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      },
+      {
+        "table_name": "nfc_events",
+        "column_name": "card_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null,
+        "is_identity": "NO",
+        "identity_generation": null,
+        "table_owner": "postgres"
+      }
+    ],
+    "sequences": [
+      {
+        "schema_name": "public",
+        "sequence_name": "nfc_events_id_seq",
+        "sequence_owner": "postgres",
+        "data_type": "bigint",
+        "seqincrement": 1,
+        "seqmin": 1,
+        "seqmax": "9223372036854775807",
+        "seqcycle": false,
+        "seqcache": 1,
+        "owned_table": "nfc_events",
+        "owned_column": "id",
+        "deptype": "i",
+        "table_owner": "postgres",
+        "direct_acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+        "anon_usage": true,
+        "anon_select": true,
+        "anon_update": true,
+        "auth_usage": true,
+        "auth_select": true,
+        "auth_update": true
+      }
+    ],
+    "functions": [
+      {
+        "nspname": "private",
+        "signature": "private.app_is_admin()",
+        "arguments": "",
+        "result": "boolean",
+        "owner": "postgres",
+        "prosecdef": true,
+        "proconfig": [
+          "search_path=\"\""
+        ],
+        "source_fingerprint": "584d603fe33758ec2b000b5c78a0b65e"
+      },
+      {
+        "nspname": "public",
+        "signature": "consume_business_card_rate_limit(text,integer,integer)",
+        "arguments": "p_bucket_key text, p_max_requests integer, p_window_seconds integer",
+        "result": "boolean",
+        "owner": "postgres",
+        "prosecdef": true,
+        "proconfig": [
+          "search_path=\"\""
+        ],
+        "source_fingerprint": "77db0d36919174b972bfdbc55e117678"
+      },
+      {
+        "nspname": "public",
+        "signature": "register_business_card_event_with_token(uuid,text,text)",
+        "arguments": "p_card_id uuid, p_token_hash text, p_device_type text",
+        "result": "jsonb",
+        "owner": "postgres",
+        "prosecdef": true,
+        "proconfig": [
+          "search_path=\"\""
+        ],
+        "source_fingerprint": "8f9bd473a28d9442b91527d9d78f64c6"
+      }
+    ],
+    "reviews": [
+      {
+        "schemaname": "public",
+        "tablename": "app_business_review_snapshots",
+        "policyname": "app_business_reviews_select_member_admin",
+        "roles": "{authenticated}",
+        "cmd": "SELECT",
+        "qual": "(private.app_is_admin() OR (EXISTS ( SELECT 1\n   FROM ((app_business_members m\n     JOIN app_profiles p ON ((p.user_id = m.user_id)))\n     JOIN app_businesses b ON ((b.id = m.business_id)))\n  WHERE ((m.business_id = app_business_review_snapshots.business_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (p.status = 'approved'::text) AND (b.status = 'approved'::text)))))",
+        "with_check": null
+      }
+    ],
+    "roles": [
+      {
+        "rolname": "authenticated",
+        "rolsuper": false,
+        "rolinherit": true,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "anon",
+        "rolsuper": false,
+        "rolinherit": true,
+        "rolbypassrls": false
+      },
+      {
+        "rolname": "service_role",
+        "rolsuper": false,
+        "rolinherit": true,
+        "rolbypassrls": true
+      },
+      {
+        "rolname": "postgres",
+        "rolsuper": false,
+        "rolinherit": true,
+        "rolbypassrls": true
+      }
+    ],
+    "memberships": [
+      {
+        "parent_role": "anon",
+        "member_role": "authenticator",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "anon",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "anon",
+        "member_role": "supabase_realtime_admin",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "authenticated",
+        "member_role": "authenticator",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "authenticated",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "authenticated",
+        "member_role": "supabase_realtime_admin",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "authenticator",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "pg_create_subscription",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "pg_monitor",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "pg_read_all_data",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "pg_signal_backend",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "service_role",
+        "member_role": "authenticator",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "service_role",
+        "member_role": "postgres",
+        "admin_option": true,
+        "inherit_option": true,
+        "set_option": true
+      },
+      {
+        "parent_role": "service_role",
+        "member_role": "supabase_realtime_admin",
+        "admin_option": false,
+        "inherit_option": false,
+        "set_option": true
+      },
+      {
+        "parent_role": "supabase_privileged_role",
+        "member_role": "postgres",
+        "admin_option": false,
+        "inherit_option": true,
+        "set_option": true
+      }
+    ],
+    "defaults": [
+      {
+        "owner": "postgres",
+        "schema_name": "public",
+        "object_type": "S",
+        "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"
+      },
+      {
+        "owner": "postgres",
+        "schema_name": "public",
+        "object_type": "f",
+        "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+      },
+      {
+        "owner": "postgres",
+        "schema_name": "public",
+        "object_type": "r",
+        "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+      },
+      {
+        "owner": "postgres",
+        "schema_name": "storage",
+        "object_type": "S",
+        "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"
+      },
+      {
+        "owner": "postgres",
+        "schema_name": "storage",
+        "object_type": "f",
+        "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+      },
+      {
+        "owner": "postgres",
+        "schema_name": "storage",
+        "object_type": "r",
+        "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+      }
+    ],
+    "public_destination": [
+      {
+        "anon_target_url_select": true,
+        "authenticated_target_url_select": true,
+        "events_sequence": null,
+        "reviews_sequence": null
+      }
+    ]
+  },
+  "migration_history": {
+    "migration_019": {
+      "version": "20261019064522",
+      "name": "restrict_anonymous_business_writes",
+      "registered": true
+    },
+    "migration_020_registered": false,
+    "migration_021_registered": false
+  },
+  "product_edge_functions": {
+    "manage_business_administration_deployed": false,
+    "manage_business_card_token_deployed": false,
+    "register_business_card_event_deployed": false,
+    "observed_slugs": [
+      "register-nfc-event",
+      "register-business-card-event-e2e",
+      "register-business-card-event-secure-test"
+    ]
+  },
+  "local_postgresql_blocker": "No accessible PostgreSQL 17 server/client tools, Docker or WSL, nor a DB connection configured for pg_dump. Metadata evidence is not a faithful schema dump.",
+  "notes": [
+    "History business UUID replaced with a stable alias; counts unchanged.",
+    "Successful SELECT execution does not mean a security check passed.",
+    "RLS behavior with two real users/businesses and NFC/QR end-to-end not tested."
+  ]
+}

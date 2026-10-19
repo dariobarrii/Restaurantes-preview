@@ -179,6 +179,18 @@ BEGIN
       RAISE EXCEPTION 'public.% ID sequence must not CYCLE', v_table_name;
     END IF;
 
+    -- Staging's postgres default ACL grants sequence access to browser roles.
+    -- Do not expose new ID sequences while 021 is still awaiting application.
+    -- Server/owner access remains; 021 adds back review-only authenticated USAGE.
+    EXECUTE pg_catalog.format(
+      'REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
+      v_sequence::regclass
+    );
+    IF pg_catalog.has_sequence_privilege('anon',v_sequence,'USAGE,SELECT,UPDATE')
+       OR pg_catalog.has_sequence_privilege('authenticated',v_sequence,'USAGE,SELECT,UPDATE') THEN
+      RAISE EXCEPTION 'Unexpected effective browser access to public.% ID sequence', v_table_name;
+    END IF;
+
     EXECUTE pg_catalog.format(
       'SELECT COALESCE(max(id),0) FROM public.%I', v_table_name
     ) INTO v_max_id;

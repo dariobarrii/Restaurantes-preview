@@ -1,0 +1,48 @@
+(node:18020) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ business creation supplies a server UUID without a database default (30.7958ms)
+✔ card creation supplies a server UUID and preserves the approved business (1.7367ms)
+✔ creation rejects caller-supplied primary keys (2.8595ms)
+✔ unapproved or non-admin profiles cannot reach creation writes (2.6928ms)
+✔ database insert failures are not reported as creation successes (2.6818ms)
+✔ portal and card use business filtering and server gateway paths (2.57ms)
+✔ registration and rate-limit RPC privileges are restricted in the migration (0.7595ms)
+✔ gateway applies per-client rate limits before forwarding and fails closed (0.2569ms)
+✔ token and historical mapping checks stay server-side and ambiguity-safe (0.3962ms)
+✔ gateway body and response handling is bounded and secret-safe (0.4148ms)
+✔ historical import is idempotent and does not rewrite attribution or event time (0.45ms)
+✔ staging diagnostics are read-only and compare history by tenant/channel (0.3724ms)
+✔ nullable schema fields and panel fallbacks preserve unknown legacy values (0.4657ms)
+✔ dashboard mutations are server-authorized and client roles cannot promote themselves (0.5616ms)
+✔ each dashboard mutation validates identifiers, allowed fields, and authorization (0.4685ms)
+✔ profile reads use bounded pagination and archived cards cannot be reactivated (0.2265ms)
+✔ admin read actions page every dataset and fail instead of silently truncating (0.2232ms)
+✔ admin bearer parsing accepts normal Authorization headers and HTTPS targets (0.1535ms)
+✔ admin action allowlists reject unexpected request fields (0.1667ms)
+✔ dashboard permissions revoke direct writes alongside server replacement operations (0.1789ms)
+✔ profile column grant survives the last column ACL cleanup (0.1426ms)
+✔ legacy NFC sequence writes cannot survive the dashboard privilege migration (0.176ms)
+✔ 020 clears inherited default sequence ACLs before it commits (0.1098ms)
+✔ review verification requires allowed columns without a table-wide INSERT grant (0.1748ms)
+✔ dashboard preflight is catalog-only and contains a staged rollback plan (0.1635ms)
+✔ staging acceptance fixture is project-locked, scoped, and secret-free (0.2822ms)
+✔ product NFC/QR contract validates card state and keeps destinations behind token flow (0.1244ms)
+✔ fixture checks HTTP and final state, isolates authorization probes, and fails closed on cleanup (0.296ms)
+✔ card portal reads remain behind the admin function and SQL ACLs cover column grants (0.3496ms)
+✔ forwards only to configured staging and returns allowlisted public fields (38.5574ms)
+✔ rejects disallowed origin and non-POST methods (0.9423ms)
+✔ rejects wrong media type and oversized streamed body before forwarding (1.0909ms)
+✔ rejects a client over its limit without calling the event function (1.5058ms)
+✔ uses separate keys for separate client IPs (1.5624ms)
+✔ fails closed when client identity or limiter is unavailable (1.1124ms)
+✔ rejects unsafe or non-staging upstream configuration (0.461ms)
+✔ sanitizes malformed and unexpected upstream responses (1.0978ms)
+✔ does not return a destination containing the gateway secret (1.194ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 190.6485
