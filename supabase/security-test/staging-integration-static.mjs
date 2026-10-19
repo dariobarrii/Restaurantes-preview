@@ -32,6 +32,8 @@ test("registration and rate-limit RPC privileges are restricted in the migration
   assert.match(eventMigration,/REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated/);
   assert.match(eventMigration,/GRANT EXECUTE ON FUNCTION %s TO service_role/);
   assert.match(eventMigration,/has_function_privilege/);
+  assert.match(eventMigration,/Token table privileges do not match server-only access/);
+  assert.match(eventMigration,/acl_sweep/);
   assert.match(eventMigration,/aclexplode/);
   assert.match(eventMigration,/DO \$acl_sweep\$/);
   assert.match(eventMigration,/acl\.grantee NOT IN \(p\.proowner,service_role_oid\)/);
