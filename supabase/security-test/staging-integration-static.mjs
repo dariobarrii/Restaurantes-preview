@@ -232,9 +232,13 @@ test("dashboard permissions revoke direct writes alongside server replacement op
     "REVOKE MAINTAIN ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
     "REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated",
     "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated",
-"has_table_privilege('authenticated','public.app_business_cards','SELECT')",
+    "GRANT INSERT (business_id, platform, review_count)",
+    "REVOKE ALL ON SEQUENCE",
+    "has_table_privilege('authenticated','public.app_business_cards','SELECT')",
     "nq_central_profile_name_self_update","nq_central_member_review_insert",
-    "p.status='approved'","b.status='approved'","has_column_privilege",
+    "p.status='approved'","b.status='approved'","review_count >= 0",
+    "'TRUNCATE','REFERENCES','TRIGGER','MAINTAIN'",
+    "'captured_at','INSERT'","'source','INSERT'","has_column_privilege",
   ]) assert.ok(dashboardMigration.includes(sql), sql);
   assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO anon"));
   assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO authenticated"));
@@ -265,6 +269,13 @@ test("staging acceptance fixture is project-locked, scoped, and secret-free", ()
   assert.ok(stagingFixture.includes('id=in.('));
   assert.ok(stagingFixture.includes('business_id: BUSINESS[tenant].id'));
   assert.ok(stagingFixture.includes('token_hash: digest(raw)'));
+  assert.ok(stagingFixture.includes('page <= 50'));
+  assert.ok(stagingFixture.includes('"business_id=in.(" + Object.values(BUSINESS)'));
+  assert.ok(stagingFixture.includes('owner cannot capture reviews for another business'));
+  assert.ok(stagingFixture.includes('viewer role cannot capture reviews for its own business'));
+  assert.ok(stagingFixture.includes('body: [{ business_id: BUSINESS.a.id, platform: "Google apertura", review_count: probeCount }]'));
+  assert.ok(!stagingFixture.includes('REVIEW_PROBE_IDS'));
+  assert.ok(!stagingFixture.includes('captured_at: new Date().toISOString(), source: "manual"'));
   assert.ok(!stagingFixture.includes("service_role_key ="));
   assert.ok(!stagingFixture.includes("console.log("));
 });
