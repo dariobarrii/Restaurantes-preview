@@ -136,9 +136,9 @@ function ownsCard(cardKey, tenant) {
 }
 async function prepareBusinessRows() {
   for (const b of Object.values(BUSINESS)) {
-    const existing = await get("app_businesses", "select=id,slug&id=eq." + b.id);
+    const existing = await get("app_businesses", "select=id,slug,name&id=eq." + b.id);
     const row = existing.data?.[0];
-    if (row && row.slug !== b.slug) throw new Error("Fixture business ID collides with a non-fixture row.");
+    if (row && (row.slug !== b.slug || row.name !== b.name)) throw new Error("Fixture business ID collides with a non-fixture row.");
   }
   await upsert("app_businesses", Object.values(BUSINESS).map((b) => ({
     id: b.id, name: b.name, slug: b.slug, status: "approved",
@@ -146,10 +146,12 @@ async function prepareBusinessRows() {
 }
 async function prepareCards() {
   for (const [key, id] of Object.entries(CARD_IDS)) {
-    const existing = await get("app_business_cards", "select=id,business_id&id=eq." + id);
+    const existing = await get("app_business_cards", "select=id,business_id,target_url&id=eq." + id);
     const row = existing.data?.[0];
     const tenant = key.startsWith("a_") ? "a" : "b";
-    if (row && row.business_id !== BUSINESS[tenant].id) throw new Error("Fixture card ID collides with a non-fixture row.");
+    if (row && (row.business_id !== BUSINESS[tenant].id || !String(row.target_url).includes("/nq-fixture/" + tenant + "/"))) {
+      throw new Error("Fixture card ID collides with a non-fixture row.");
+    }
   }
   const rows = Object.entries(CARD_IDS).map(([key, id]) => {
     const tenant = key.startsWith("a_") ? "a" : "b";
