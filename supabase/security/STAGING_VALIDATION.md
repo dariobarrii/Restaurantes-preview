@@ -1,33 +1,31 @@
-# Staging integration verification checklist
+# Staging security corrections and verification
 
-All checks below are **pending**. No staging database, browser, Worker, or live endpoint checks have been run.
+These files are branch-only proposals. Nothing here has been applied to Supabase or deployed.
 
-## Required staging configuration
-- [ ] Confirm approved staging project and schema; verify app_business_cards and token table definitions against migration preflights.
-- [ ] Configure blank staging-only public URL/key and Worker gateway URL in nq-central-staging-config.js.
-- [ ] Configure server-only gateway binding, allowed admin origins, Edge Function env and a real rate-limit binding; do not put secrets in browser code.
-- [ ] Verify direct-origin calls fail closed before testing public card scans.
+## RPC/table access control
 
-## Card/token lifecycle
-- [ ] Issue a token for an active card; verify raw token is returned only once and only hash is persisted.
-- [ ] Reject malformed/unknown token; do not record an event.
-- [ ] Revoke token and verify previous URL fails without an event.
-- [ ] Rotate token; verify old token fails and new token succeeds.
-- [ ] Test active, paused, archived card, and unapproved business; only active/unarchived card for approved business may record.
-- [ ] Confirm target rejects non-HTTPS, credential-bearing, or malformed destinations.
+Migration 016 explicitly revokes EXECUTE on the registration RPC from PUBLIC, anon and authenticated, then grants it to service_role. It also discovers the rate-limit RPC by catalog name and signature, restricts its EXECUTE to service_role, and asserts these effective permissions. It removes client INSERT on both event tables so a direct table write cannot bypass the gateway or invoke the legacy mirror; token-table access is limited to service_role.
 
-## Public event path
-- [ ] Submit NFC and QR scans for cards owned by two staging businesses; verify event channel and business_id match the card.
-- [ ] Directly call the protected Edge endpoint without gateway header; expect rejection and zero event rows.
-- [ ] Verify browser can call only the configured Worker, never Supabase Edge Function origin.
-- [ ] Exercise per-card and Worker rate limits; confirm fail-closed behavior when limiter or gateway is unavailable.
-- [ ] Confirm redirects occur only after a successful registration and valid HTTPS target.
+Migration 018 similarly removes client EXECUTE from the SECURITY DEFINER legacy mirror trigger function. The existing trigger should continue to fire; confirm this in staging after the migration.
 
-## Isolation and historical metrics
-- [ ] Sign in as a member of Restaurant A; verify its portal query returns only A events and reports/CSV agree.
-- [ ] Attempt selecting Restaurant B while authenticated only to A; verify RLS denies access and no B rows appear.
-- [ ] Repeat with an independent account for Restaurant B.
-- [ ] Capture read-only reconciliation counts before import.
-- [ ] Apply reviewed migration only in staging, then rerun counts; verify totals/channel/device/date/card/business attribution and zero duplicate legacy IDs.
-- [ ] Rerun migration in disposable staging to demonstrate idempotency; compare counts again.
-- [ ] Manually resolve unmatched/ambiguous legacy labels before further import; do not guess mappings.
+### Read-only staging verification
+
+Review supabase/security/registration-privilege-checks.sql manually and run it only against the staging project. Expected results:
+- registration and rate-limit functions: public_execute_acl=false, anon_can_execute=false, authenticated_can_execute=false, service_role_can_execute=true;
+- legacy mirror: no PUBLIC/anon/authenticated EXECUTE;
+- anon/authenticated INSERT=false on app_business_events and nfc_events;
+- inspect RLS and remaining SELECT/UPDATE privileges against the actual portal behavior.
+
+The migration contains post-change assertions, but they have not been run. These checks do not prove runtime isolation by themselves.
+
+## Rate limits
+
+The Edge Function has a global ceiling of 600 calls per 60 seconds and a per-card database cooldown of 2 seconds. The new Worker candidate adds a hashed per-client key using Cloudflare's trusted CF-Connecting-IP and a RATE_LIMITER binding. It fails closed if the client IP, binding, or limit service is unavailable. Its threshold/window must be configured in the Cloudflare binding by the operator; this branch does not configure or deploy a service. The Worker source was not present among the branch files that could be located, so the candidate lives under workers/nq-central-card-gateway and is not connected until its staging URL is reviewed and set in the blank frontend config.
+
+## Historical events
+
+Migration 017 imports only events with a source timestamp and a unique card/business or exact normalized business-name match. Ambiguous and unmatched names remain in nfc_events. Conflict handling inserts by legacy_event_id and only fills missing device/card attribution; it never overwrites an existing business_id, channel or timestamp. Migration 018 uses the card's business_id first, then a unique normalized name; it ignores rows with missing timestamp and leaves ambiguous rows unassigned.
+
+## Test status
+
+Offline source assertions and mocked Worker unit tests are prepared. They do not verify deployed Cloudflare limits, SQL ACLs, triggers, RLS, or two-restaurant isolation. Those checks remain pending in staging.
