@@ -1,6 +1,6 @@
 -- Proposed idempotent historical import. Review the read-only reconciliation
 -- queries in supabase/security/historical-event-reconciliation.sql first.
--- Rows without a unique business match are intentionally left in nfc_events.
+-- Rows without a unique business match or source timestamp remain in nfc_events.
 BEGIN;
 
 DO $preflight$
@@ -67,6 +67,7 @@ WITH source_events AS (
           pg_catalog.lower(pg_catalog.trim(e.restaurant))
   ) AS name_match ON true
   WHERE e.event IN ('nfc_tap', 'qr_scan')
+    AND e.created_at IS NOT NULL
 ),
 resolved AS (
   SELECT
