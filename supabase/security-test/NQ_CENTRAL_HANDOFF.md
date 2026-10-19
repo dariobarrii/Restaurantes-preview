@@ -28,7 +28,7 @@ Bloque portal completado: `nq-central-data.mjs` y `index.html` preservan el nego
 ## Pendientes priorizados y bloqueos externos
 
 1. Validación PostgreSQL real de 020/021 (dos pasadas cada una). Falta servidor local/dump o habilitar la alternativa Actions tras aprobación. El workflow nuevo requiere registro en la rama por defecto; no se ha modificado main. Faltan rol/conexión de lectura, CA, digest de imagen y entorno protegido. Vanilla PostgreSQL puede no tener extensiones Supabase; debe abortar sin sustituirlas.
-2. Revisar límites de petición/emisión de credenciales y el scanner actual; los fallos de selección/paginación/carreras de carga del portal ya se corrigieron localmente. Para historiales >50.000, diseñar agregación servidor por business_id antes de ampliar límites del navegador.
+2. Límites de credenciales/scanner y fallos de selección/paginación/carreras del portal corregidos localmente; falta probar sus recorridos reales. Para historiales >50.000, diseñar agregación servidor por business_id antes de ampliar límites del navegador.
 3. Preparar aceptación integral tras resolver contratos/esquema/despliegues; no ejecutar escrituras ahora. El endpoint de producto no está desplegado.
 4. Demostrar aislamiento real entre dos usuarios y restaurantes, ciclo de tarjetas/tokens, rate limiting y repetición de solicitudes. Las pruebas unitarias no sustituyen esa evidencia.
 5. Importación histórica y espejo solo después de conciliación y aprobación expresa. No importar los 64 eventos de prueba ni alterar fechas/atribuciones ahora.
@@ -41,7 +41,7 @@ Bloque portal completado: `nq-central-data.mjs` y `index.html` preservan el nego
 4. Para PostgreSQL seguir `POSTGRES_ACTIONS_PLAN.md` o `POSTGRES_MIGRATION_VALIDATION.md`. No usar catálogos reconstruidos/mocks como sustituto de un dump/restauración fiel.
 5. Actualizar este relevo y hacer commits pequeños. Nunca incluir secretos, dumps privados o logs SQL completos en Git/chat.
 
-Próximo cambio de código recomendado: revisar el límite de body de manage-business-card-token y las pruebas del scanner de producto, sin conectar endpoints E2E ni desplegar.
+El límite de body y el scanner quedaron completados en el bloque siguiente; no repetir salvo regresión.
 
 ## Bloque credenciales y scanner completado
 
@@ -52,3 +52,13 @@ Resultados reales de esta jornada: 66/66 Node (24 estáticas, 6 handler administ
 Preparado INTEGRAL_ACCEPTANCE_PLAN.md con orden de aceptación, evidencia requerida, límites de cada suite y operaciones que requieren aprobación. No volver a usar los smoke antiguos como evidencia del scanner actual.
 
 Próximo cambio recomendado actualizado: definir un contrato de request_id persistente entre scanner, gateway, Edge y RPC si se requiere idempotencia de reintentos; revisar todos los consumidores y diseñar migración separada antes de implementarlo. El límite temporal actual por tarjeta no es idempotencia duradera. Antes de lanzamiento también hace falta prueba PostgreSQL concurrente de pausa/revocación durante registro y aislamiento real de los dos negocios. Las pruebas locales de autorización no cubren esos casos.
+
+
+## Referencias verificadas al cerrar los bloques
+
+Commits remotos publicados únicamente en la rama autorizada:
+- ecad27ff377a4dd1a240d602d1c98f1073d21a61: plan PostgreSQL/Actions y relevo inicial.
+- 82d1161faa44a89b91a38be88599546f13bfc710: selección/paginación/CSV/reseñas y aislamiento de caché de sesión.
+- 6570e5d8f62a8f5efa1f6dc420f1aa2e03a9ba3a: credenciales, respuestas del registro, scanner, 66 pruebas y aceptación preparada.
+
+Este relevo se guarda en un commit documental posterior; resolver HEAD en GitHub antes de continuar. Árboles remotos comparados con los commits locales revisados, sin sobrescribir cambios posteriores. No hubo consultas nuevas ni escrituras en Supabase durante esta continuación; los tres preflights pertenecen al informe previo.
