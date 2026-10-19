@@ -150,7 +150,7 @@ test("dashboard mutations are server-authorized and client roles cannot promote 
   assert.ok(adminFunction.includes('profile?.status !== "approved"'));
   assert.ok(adminFunction.includes("input.user_id === authData.user.id"));
   assert.ok(!adminFunction.includes("update({ role:"));
-  for (const action of ["business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update"]) {
+  for (const action of ["profiles","business_create","business_update","business_status","profile_status","member_upsert","card_create","card_update"]) {
     assert.ok(adminFunction.includes(action), action);
   }
 });
@@ -161,6 +161,7 @@ test("dashboard permissions revoke direct writes alongside server replacement op
     "REVOKE MAINTAIN ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
     "REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated",
     "GRANT UPDATE (full_name) ON TABLE public.app_profiles TO authenticated",
+    "No client card SELECT grants","has_table_privilege('authenticated','public.app_business_cards','SELECT')",
     "nq_central_profile_name_self_update","nq_central_member_review_insert",
     "p.status='approved'","b.status='approved'","has_column_privilege",
   ]) assert.ok(dashboardMigration.includes(sql), sql);
