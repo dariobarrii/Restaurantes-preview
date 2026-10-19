@@ -184,6 +184,33 @@ test("each dashboard mutation validates identifiers, allowed fields, and authori
   assert.ok(adminFunction.includes(".select(\"id\").maybeSingle()"));
 });
 
+
+test("admin read actions page every dataset and fail instead of silently truncating", () => {
+  assert.ok(adminFunction.includes("const ADMIN_PAGE_SIZE = 1000"));
+  assert.ok(adminFunction.includes("const MAX_ADMIN_RESULT_ROWS = 50000"));
+  assert.ok(adminFunction.includes("async function readAllRows"));
+  assert.ok(adminFunction.includes("throw new ResultLimitError()"));
+  assert.ok(adminFunction.includes('error: "result_limit_exceeded"'));
+  assert.ok(adminFunction.includes(".range(from, to)"));
+  assert.ok(!adminFunction.includes(".limit(10000)"));
+  assert.ok(!adminFunction.includes(".limit(5000)"));
+});
+
+test("admin action allowlists reject unexpected request fields", () => {
+  assert.ok(adminFunction.includes("const fieldsByAction"));
+  assert.ok(adminFunction.includes('return json({ error: "unexpected_field" }, 400, origin)'));
+  for (const action of [
+    "dashboard: [\"action\"]", "profiles: [\"action\"]", "cards: [\"action\"]",
+    "business_create: [\"action\", \"name\", \"slug\", \"category\"]",
+    "business_update: [\"action\", \"id\", \"name\", \"slug\"]",
+    "business_status: [\"action\", \"id\", \"status\"]",
+    "profile_status: [\"action\", \"user_id\", \"status\"]",
+    "member_upsert: [\"action\", \"user_id\", \"business_id\", \"member_role\"]",
+    "card_create: [\"action\", \"business_id\", \"channel\", \"label\", \"target_url\"]",
+    "card_update: [\"action\", \"id\", \"label\", \"target_url\", \"status\", \"archived\"]",
+  ]) assert.ok(adminFunction.includes(action), action);
+});
+
 test("dashboard permissions revoke direct writes alongside server replacement operations", () => {
   for (const sql of [
     "REVOKE ALL PRIVILEGES ON TABLE public.app_businesses FROM PUBLIC, anon, authenticated",
