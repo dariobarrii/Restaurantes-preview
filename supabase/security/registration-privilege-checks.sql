@@ -1,5 +1,5 @@
 -- READ ONLY: run manually only against the dedicated staging project.
--- Reports function metadata/ACLs and effective table privileges; no function bodies or table rows.
+-- Reports direct ACLs, effective role privileges, RLS/policy and trigger metadata; no function bodies or table rows.
 WITH target_functions AS (
   SELECT p.oid,p.proname,p.prosecdef,p.proacl,
          p.oid::regprocedure::text AS identity
@@ -9,10 +9,12 @@ WITH target_functions AS (
     AND (p.proname IN (
       'register_business_card_event_with_token',
       'consume_business_card_rate_limit',
-      'mirror_legacy_nfc_event_to_business',\n      'app_is_admin'
+      'mirror_legacy_nfc_event_to_business',
+      'app_is_admin'
     ) OR p.prosecdef)
 )
 SELECT f.identity,
+       pg_catalog.pg_get_userbyid(p.proowner) AS function_owner,
        f.prosecdef AS security_definer,
        EXISTS (
          SELECT 1
@@ -21,6 +23,14 @@ SELECT f.identity,
          ) acl
          WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE'
        ) AS public_execute_acl,
+       ARRAY(
+         SELECT CASE WHEN acl.grantee=0 THEN 'PUBLIC'
+                     ELSE pg_catalog.pg_get_userbyid(acl.grantee) END || ':' || acl.privilege_type
+         FROM pg_catalog.aclexplode(
+           COALESCE(f.proacl,pg_catalog.acldefault('f',p.proowner))
+         ) acl
+         ORDER BY acl.grantee,acl.privilege_type
+       ) AS direct_acl_entries,
        pg_catalog.has_function_privilege('anon',f.oid,'EXECUTE') AS anon_can_execute,
        pg_catalog.has_function_privilege('authenticated',f.oid,'EXECUTE') AS authenticated_can_execute,
        pg_catalog.has_function_privilege('service_role',f.oid,'EXECUTE') AS service_role_can_execute
@@ -31,6 +41,14 @@ ORDER BY f.identity;
 SELECT c.relname AS table_name,
        c.relrowsecurity AS rls_enabled,
        c.relforcerowsecurity AS rls_forced,
+       ARRAY(
+         SELECT CASE WHEN acl.grantee=0 THEN 'PUBLIC'
+                     ELSE pg_catalog.pg_get_userbyid(acl.grantee) END || ':' || acl.privilege_type
+         FROM pg_catalog.aclexplode(
+           COALESCE(c.relacl,pg_catalog.acldefault('r',c.relowner))
+         ) acl
+         ORDER BY acl.grantee,acl.privilege_type
+       ) AS direct_acl_entries,
        pg_catalog.has_table_privilege('anon',c.oid,'SELECT') AS anon_select,
        pg_catalog.has_table_privilege('anon',c.oid,'INSERT') AS anon_insert,
        pg_catalog.has_table_privilege('anon',c.oid,'UPDATE') AS anon_update,
