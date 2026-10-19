@@ -169,12 +169,16 @@ BEGIN
 
   IF pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','SELECT')
      OR pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','INSERT')
+     OR pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','UPDATE')
+     OR pg_catalog.has_table_privilege('anon','public.app_business_card_tokens','DELETE')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','SELECT')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','INSERT')
      OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','UPDATE')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_card_tokens','DELETE')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','SELECT')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','INSERT')
-     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','UPDATE') THEN
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_card_tokens','DELETE') THEN
     RAISE EXCEPTION 'Token table privileges do not match server-only access';
   END IF;
 END
