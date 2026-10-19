@@ -17,6 +17,24 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Apply/review event compatibility migration before this migration';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='app_business_events'
+      AND column_name='device_type'
+  ) THEN
+    RAISE EXCEPTION 'Required app_business_events.device_type column is missing';
+  END IF;
+  IF EXISTS (
+    SELECT required.column_name
+    FROM (VALUES ('id'), ('business_id'), ('channel'), ('target_url'), ('status'), ('archived_at')) AS required(column_name)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='app_business_cards'
+        AND column_name=required.column_name
+    )
+  ) THEN
+    RAISE EXCEPTION 'Required app_business_cards columns are missing';
+  END IF;
 END
 $preflight$;
 
@@ -64,7 +82,43 @@ BEGIN
      AND status = 'active'
      AND archived_at IS NULL;
 
-  IF NOT FOUND OR v_card.target_url IS NULL OR v_card.target_url !~* '^https://[^[:space:]]+$' THEN
+  IF NOT FOUND OR v_card.channel NOT IN ('nfc', 'qr')
+     OR v_card.target_url IS NULL OR v_card.target_url !~* '^https://[^[:space:]]+
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_card');
+  END IF;
+
+  SELECT * INTO v_business
+    FROM public.app_businesses
+   WHERE id = v_card.business_id
+     AND status = 'approved';
+
+  IF NOT FOUND THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_card');
+  END IF;
+
+  IF v_token.last_event_at IS NOT NULL
+     AND v_token.last_event_at > v_now - interval '2 seconds'
+  THEN
+    RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'rate_limited');
+  END IF;
+
+  v_event := CASE WHEN v_card.channel = 'qr' THEN 'qr_scan' ELSE 'nfc_tap' END;
+
+  INSERT INTO public.app_business_events
+    (business_id, event_type, created_at, source, device_type, card_id)
+  VALUES
+    (v_card.business_id, v_event, v_now, 'public_card', p_device_type, v_card.id);
+
+  UPDATE public.app_business_card_tokens
+     SET last_event_at = v_now
+   WHERE card_id = v_card.id;
+
+  RETURN pg_catalog.jsonb_build_object('ok', true, 'target_url', v_card.target_url);
+END;
+$function$;
+
+COMMIT;
+ THEN
     RETURN pg_catalog.jsonb_build_object('ok', false, 'error', 'invalid_card');
   END IF;
 
