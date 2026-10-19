@@ -33,7 +33,27 @@ function cleanOrigin(req: Request): string | null {
 async function readBody(req: Request): Promise<Record<string, unknown>> {
   const length = Number(req.headers.get("content-length") || "0");
   if (length > 8192) throw new Error("request_too_large");
-  const body = await req.json();
+  const reader = req.body?.getReader();
+  if (!reader) throw new Error("invalid_request");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > 8192) {
+      await reader.cancel();
+      throw new Error("request_too_large");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const body = JSON.parse(new TextDecoder().decode(bytes));
   if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("invalid_request");
   return body as Record<string, unknown>;
 }
