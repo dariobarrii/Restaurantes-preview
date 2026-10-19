@@ -10,6 +10,12 @@ No rollback SQL has been executed or prepared as an automatic destructive script
 4. Apply 021 only after the replacement routes and review/member policies pass staging acceptance tests.
 5. Keep migrations 020 and 021 separate so schema and permission failures can be isolated.
 
+## PostgreSQL validation gate
+
+The exact-major local validation procedure is documented in [POSTGRES_MIGRATION_VALIDATION.md](../security-test/POSTGRES_MIGRATION_VALIDATION.md). It has not been run. It requires a separately approved read-only schema export from the named staging project and a local PostgreSQL server with the same major version. No staging SQL, migration, or fixture is run by that procedure until its specific approval is given.
+
+Migration 020 uses transactional ALTER SEQUENCE RESTART rather than setval so a later migration error can roll back the sequence change. It also locks the target tables while aligning IDs and fails closed if sequence ownership, default dependency, range, or cycle settings differ from expectations.
+
 ## Recovery approach
 
 - If migration 020 fails, its transaction rolls back. It adds nullable columns only and performs no backfill. Do not drop columns automatically: once entered, category/label values may be in use.
