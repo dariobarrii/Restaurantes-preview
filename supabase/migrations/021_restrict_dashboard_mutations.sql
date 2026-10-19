@@ -148,8 +148,16 @@ BEGIN
      OR pg_catalog.has_column_privilege('authenticated','public.app_profiles','role','UPDATE')
      OR pg_catalog.has_column_privilege('authenticated','public.app_profiles','status','UPDATE')
      OR NOT pg_catalog.has_column_privilege('authenticated','public.app_profiles','full_name','UPDATE')
+     OR pg_catalog.has_table_privilege('anon','public.app_business_cards','SELECT')
      OR NOT pg_catalog.has_table_privilege('service_role','public.app_businesses','INSERT')
-     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_cards','UPDATE') THEN
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_businesses','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_cards','INSERT')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_cards','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_profiles','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_members','INSERT')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_members','UPDATE')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_review_snapshots','SELECT')
+     OR NOT pg_catalog.has_table_privilege('service_role','public.app_business_events','SELECT') THEN
     RAISE EXCEPTION 'Post-migration privilege verification failed';
   END IF;
 END
