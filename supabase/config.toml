@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.register-business-card-event]
 verify_jwt = false
+
+[functions.manage-business-administration]
+verify_jwt = true
