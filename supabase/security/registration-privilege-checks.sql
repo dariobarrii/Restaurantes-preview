@@ -54,3 +54,16 @@ WHERE schemaname='public'
     'app_business_cards','app_businesses'
   )
 ORDER BY tablename,policyname;
+
+-- Trigger metadata for the legacy mirror; no function body or event rows are returned.
+SELECT t.tgname AS trigger_name,
+       t.tgenabled AS enabled_state,
+       t.tgisinternal AS internal_trigger,
+       t.tgfoid::regprocedure::text AS trigger_function,
+       pg_catalog.pg_get_triggerdef(t.oid,true) AS trigger_definition
+FROM pg_catalog.pg_trigger t
+JOIN pg_catalog.pg_class tbl ON tbl.oid=t.tgrelid
+JOIN pg_catalog.pg_namespace n ON n.oid=tbl.relnamespace
+WHERE n.nspname='public' AND tbl.relname='nfc_events'
+  AND t.tgfoid='public.mirror_legacy_nfc_event_to_business()'::regprocedure
+ORDER BY t.tgname;
