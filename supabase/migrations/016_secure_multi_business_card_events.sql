@@ -7,7 +7,8 @@ BEGIN
   IF pg_catalog.to_regclass('public.app_business_cards') IS NULL
      OR pg_catalog.to_regclass('public.app_business_card_tokens') IS NULL
      OR pg_catalog.to_regclass('public.app_business_events') IS NULL
-     OR pg_catalog.to_regclass('public.app_businesses') IS NULL THEN
+     OR pg_catalog.to_regclass('public.app_businesses') IS NULL
+     OR pg_catalog.to_regclass('public.nfc_events') IS NULL THEN
     RAISE EXCEPTION 'Required multi-business card/event tables are missing';
   END IF;
   IF EXISTS (
@@ -100,5 +101,73 @@ BEGIN
   RETURN pg_catalog.jsonb_build_object('ok',true,'target_url',v_card.target_url);
 END;
 $function$;
+
+-- The Edge Function invokes this RPC with the server-side service_role key.
+-- Browser roles must not bypass the gateway by calling the function directly.
+REVOKE EXECUTE ON FUNCTION public.register_business_card_event_with_token(uuid, text, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.register_business_card_event_with_token(uuid, text, text)
+  TO service_role;
+
+-- Direct client inserts could bypass the gateway or write through the legacy mirror.
+REVOKE INSERT ON TABLE public.app_business_events FROM PUBLIC, anon, authenticated;
+REVOKE INSERT ON TABLE public.nfc_events FROM PUBLIC, anon, authenticated;
+
+-- Token management is performed by the authenticated management Edge Function.
+REVOKE ALL PRIVILEGES ON TABLE public.app_business_card_tokens FROM PUBLIC, anon, authenticated;
+GRANT ALL PRIVILEGES ON TABLE public.app_business_card_tokens TO service_role;
+
+-- Discover the exact rate-limit RPC signature from the catalog; do not guess it.
+DO $permissions$
+DECLARE
+  f record;
+  found_rate_limit_function boolean := false;
+  registration_oid oid := 'public.register_business_card_event_with_token(uuid,text,text)'::regprocedure;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS signature
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'consume_business_card_rate_limit'
+      AND p.prosecdef
+  LOOP
+    found_rate_limit_function := true;
+    EXECUTE pg_catalog.format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon, authenticated', f.signature);
+    EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION %s TO service_role', f.signature);
+    IF pg_catalog.has_function_privilege('anon', f.signature, 'EXECUTE')
+       OR pg_catalog.has_function_privilege('authenticated', f.signature, 'EXECUTE')
+       OR NOT pg_catalog.has_function_privilege('service_role', f.signature, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Rate-limit RPC privileges are not restricted to service_role';
+    END IF;
+  END LOOP;
+
+  IF NOT found_rate_limit_function THEN
+    RAISE EXCEPTION 'SECURITY DEFINER consume_business_card_rate_limit function is missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_proc p
+    CROSS JOIN LATERAL pg_catalog.aclexplode(
+      COALESCE(p.proacl, pg_catalog.acldefault('f', p.proowner))
+    ) AS acl
+    WHERE p.oid = registration_oid
+      AND acl.grantee = 0
+      AND acl.privilege_type = 'EXECUTE'
+  ) OR pg_catalog.has_function_privilege('anon', registration_oid, 'EXECUTE')
+    OR pg_catalog.has_function_privilege('authenticated', registration_oid, 'EXECUTE')
+    OR NOT pg_catalog.has_function_privilege('service_role', registration_oid, 'EXECUTE') THEN
+    RAISE EXCEPTION 'Registration RPC privileges are not restricted to service_role';
+  END IF;
+
+  IF pg_catalog.has_table_privilege('anon','public.app_business_events','INSERT')
+     OR pg_catalog.has_table_privilege('authenticated','public.app_business_events','INSERT')
+     OR pg_catalog.has_table_privilege('anon','public.nfc_events','INSERT')
+     OR pg_catalog.has_table_privilege('authenticated','public.nfc_events','INSERT') THEN
+    RAISE EXCEPTION 'Client roles retain direct event insertion privileges';
+  END IF;
+END
+$permissions$;
 
 COMMIT;
