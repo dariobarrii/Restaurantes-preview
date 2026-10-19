@@ -1,0 +1,23 @@
+# Example only: local/test configuration. This does not deploy or create a Cloudflare resource.
+name = "nq-central-card-gateway-staging-example"
+main = "src/index.mjs"
+compatibility_date = "2026-10-19"
+workers_dev = true
+
+# Replace with a unique positive integer for the test account before use.
+# This sample value is not a provisioned namespace and may not be reused.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "987654321"
+
+[ratelimits.simple]
+# Initial staging proposal: 30 requests per client IP per 60 seconds.
+limit = 30
+period = 60
+
+# Set these only to approved staging values in local .dev.vars or a staging-only
+# environment; never point this candidate at production.
+# STAGING_PROJECT_REF = "<staging-project-ref>"
+# SUPABASE_FUNCTION_URL = "https://<staging-project-ref>.supabase.co/functions/v1/register-business-card-event"
+# ALLOWED_ORIGINS = "https://<staging-preview-origin>"
+# NQ_GATEWAY_SHARED_SECRET belongs in .dev.vars for local testing, never in this file.
