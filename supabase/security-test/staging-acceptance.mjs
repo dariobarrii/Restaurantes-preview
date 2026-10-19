@@ -15,7 +15,6 @@ const FIXTURE = "nq_central_acceptance_v1";
 const SOURCE = "nq_central_acceptance_fixture_v1";
 const EVENT_IDS = [991000001,991000002,991000003,991000004,992000001,992000002,992000003,992000004];
 const REVIEW_IDS = [993000001,993000002];
-const REVIEW_PROBE_IDS = [993000003,993000004];
 const BUSINESS = {
   a: { id: "a1000000-0000-4000-8000-000000000001", slug: "nq-test-fixture-a", name: "NQ Staging Fixture A" },
   b: { id: "b1000000-0000-4000-8000-000000000002", slug: "nq-test-fixture-b", name: "NQ Staging Fixture B" },
@@ -93,8 +92,15 @@ async function get(name, query, bearer = serviceKey) {
   return request(table(name, query), { bearer });
 }
 async function listAuthUsers() {
-  const { data } = await request(new URL("admin/users?page=1&per_page=1000", auth));
-  return Array.isArray(data?.users) ? data.users : [];
+  const users = [];
+  const pageSize = 1000;
+  for (let page = 1; page <= 50; page++) {
+    const { data } = await request(new URL("admin/users?page=" + page + "&per_page=" + pageSize, auth));
+    const batch = Array.isArray(data?.users) ? data.users : [];
+    users.push(...batch);
+    if (batch.length < pageSize) return users;
+  }
+  throw new Error("Auth fixture lookup reached its 50,000-user safety limit; refusing to assume deterministic emails are unused.");
 }
 async function ensureUser(label) {
   const email = emails[label];
@@ -188,18 +194,15 @@ async function prepareEvents() {
   for (const row of (oldEvents.data || [])) {
     if (row.source !== SOURCE || !Object.values(BUSINESS).some((b) => b.id === row.business_id)) throw new Error("Fixture event ID collides with a non-fixture row.");
   }
-  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.concat(REVIEW_PROBE_IDS).join(",") + ")");
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
   for (const row of (oldReviews.data || [])) {
-    const id = Number(row.id);
-    const isSeed = REVIEW_IDS.includes(id);
-    const expectedBusiness = id === REVIEW_IDS[0] || id === REVIEW_PROBE_IDS[0] ? BUSINESS.a.id : BUSINESS.b.id;
-    const expectedCount = isSeed ? 7 : id === REVIEW_PROBE_IDS[0] ? 8 : 9;
-    if ((!isSeed && !REVIEW_PROBE_IDS.includes(id)) || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== expectedCount || row.source !== "manual") {
+    const index = REVIEW_IDS.indexOf(Number(row.id));
+    if (index < 0 || row.business_id !== BUSINESS[index === 0 ? "a" : "b"].id || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
       throw new Error("Fixture review ID collides with a non-fixture row.");
     }
   }
   await remove("app_business_events", "id=in.(" + eventIds + ")");
-  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.concat(REVIEW_PROBE_IDS).join(",") + ")");
+  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")");
   const now = Date.now();
   const rows = [];
   let eventIndex = 0;
@@ -258,20 +261,50 @@ async function checkReviewIsolation(bearer, expectedBusiness, otherBusiness, lab
   note(label + " cannot read foreign review snapshot", !rows.some((row) => row.business_id === otherBusiness), "foreign business not visible");
 }
 async function checkReviewWriteRights(ownerBearer, viewerBearer) {
-  const own = await request(table("app_business_review_snapshots"), {
-    method: "POST", key: anonKey, bearer: ownerBearer,
-    body: [{ id: REVIEW_PROBE_IDS[0], business_id: BUSINESS.a.id, platform: "Google apertura", review_count: 8, captured_at: new Date().toISOString(), source: "manual" }],
-    allowError: true, prefer: "return=minimal",
-  });
-  if (own.response.ok) await remove("app_business_review_snapshots", "id=eq." + REVIEW_PROBE_IDS[0]);
-  note("owner can capture reviews for own business", own.response.ok, "HTTP " + own.response.status);
-  const foreign = await request(table("app_business_review_snapshots"), {
-    method: "POST", key: anonKey, bearer: viewerBearer,
-    body: [{ id: REVIEW_PROBE_IDS[1], business_id: BUSINESS.a.id, platform: "Google apertura", review_count: 9, captured_at: new Date().toISOString(), source: "manual" }],
-    allowError: true, prefer: "return=minimal",
-  });
-  if (foreign.response.ok) await remove("app_business_review_snapshots", "id=eq." + REVIEW_PROBE_IDS[1]);
-  note("viewer cannot capture reviews for another business", !foreign.response.ok, "HTTP " + foreign.response.status);
+  const probeCount = 2_000_000_000 + (randomBytes(4).readUInt32BE(0) % 100_000_000);
+  const platformFilter = encodeURIComponent("Google apertura");
+  const exactProbeQuery = "select=id,business_id,platform,review_count,source&business_id=in.(" +
+    BUSINESS.a.id + "," + BUSINESS.b.id + ")&platform=eq." + platformFilter +
+    "&review_count=eq." + probeCount + "&source=eq.manual";
+  const before = await get("app_business_review_snapshots", exactProbeQuery);
+  if (!before.response.ok || (before.data || []).length) {
+    throw new Error("Review probe sentinel collides with existing data; refusing review-write tests.");
+  }
+  try {
+    const own = await request(table("app_business_review_snapshots"), {
+      method: "POST", key: anonKey, bearer: ownerBearer,
+      body: [{ business_id: BUSINESS.a.id, platform: "Google apertura", review_count: probeCount }],
+      allowError: true, prefer: "return=minimal",
+    });
+    note("owner can capture reviews for own business", own.response.ok, "HTTP " + own.response.status);
+
+    const viewerOwn = await request(table("app_business_review_snapshots"), {
+      method: "POST", key: anonKey, bearer: viewerBearer,
+      body: [{ business_id: BUSINESS.b.id, platform: "Google apertura", review_count: probeCount }],
+      allowError: true, prefer: "return=minimal",
+    });
+    note("viewer role cannot capture reviews for its own business", !viewerOwn.response.ok, "HTTP " + viewerOwn.response.status);
+
+    const foreign = await request(table("app_business_review_snapshots"), {
+      method: "POST", key: anonKey, bearer: ownerBearer,
+      body: [{ business_id: BUSINESS.b.id, platform: "Google apertura", review_count: probeCount }],
+      allowError: true, prefer: "return=minimal",
+    });
+    note("owner cannot capture reviews for another business", !foreign.response.ok, "HTTP " + foreign.response.status);
+  } finally {
+    // This random sentinel was proven absent before the test; delete only rows
+    // carrying its exact count, platform, source, and one of the fixture tenants.
+    const created = await get("app_business_review_snapshots", exactProbeQuery);
+    if (!created.response.ok) throw new Error("Could not inspect exact review probe rows for safe cleanup.");
+    for (const row of (created.data || [])) {
+      if (![BUSINESS.a.id, BUSINESS.b.id].includes(row.business_id) ||
+          row.platform !== "Google apertura" || row.review_count !== probeCount || row.source !== "manual") {
+        throw new Error("Review probe cleanup found a row outside the verified fixture signature.");
+      }
+      await remove("app_business_review_snapshots",
+        "id=eq." + encodeURIComponent(row.id) + "&business_id=eq." + row.business_id);
+    }
+  }
 }
 async function checkSelfElevation(bearer, userId) {
   const attempt = await request(table("app_profiles", "user_id=eq." + userId), {
@@ -329,25 +362,22 @@ async function cleanup() {
   for (const row of (oldEvents.data || [])) {
     if (row.source !== SOURCE || !Object.values(BUSINESS).some((item) => item.id === row.business_id)) throw new Error("Cleanup stopped: event ID is outside the fixture scope.");
   }
-  const reviewIds = REVIEW_IDS.concat(REVIEW_PROBE_IDS);
-  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + reviewIds.join(",") + ")");
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
   for (const row of (oldReviews.data || [])) {
-    const id = Number(row.id);
-    const expectedBusiness = id === REVIEW_IDS[0] || id === REVIEW_PROBE_IDS[0] ? BUSINESS.a.id : BUSINESS.b.id;
-    const expectedCount = REVIEW_IDS.includes(id) ? 7 : id === REVIEW_PROBE_IDS[0] ? 8 : 9;
-    if (!reviewIds.includes(id) || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== expectedCount || row.source !== "manual") {
+    const index = REVIEW_IDS.indexOf(Number(row.id));
+    if (index < 0 || row.business_id !== BUSINESS[index === 0 ? "a" : "b"].id || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
       throw new Error("Cleanup stopped: review ID is outside the fixture scope.");
     }
   }
   await remove("app_business_events", "id=in.(" + EVENT_IDS.join(",") + ")&source=eq." + encodeURIComponent(SOURCE));
-  await remove("app_business_review_snapshots", "id=in.(" + reviewIds.join(",") + ")&source=eq.manual");
+  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
   await remove("app_business_cards", "id=in.(" + cardIds + ")");
   const authUsers = await listAuthUsers();
   const ownedIds = authUsers.filter((u) => u.app_metadata?.nq_central_fixture === FIXTURE && Object.values(emails).includes(u.email?.toLowerCase())).map((u) => u.id);
   if (ownedIds.length) {
     const idFilter = ownedIds.join(",");
-    await remove("app_business_members", "user_id=in.(" + idFilter + ")");
+    await remove("app_business_members", "business_id=in.(" + Object.values(BUSINESS).map((b) => b.id).join(",") + ")&user_id=in.(" + idFilter + ")");
     await remove("app_profiles", "user_id=in.(" + idFilter + ")");
   }
   await remove("app_businesses", "id=in.(" + Object.values(BUSINESS).map((b) => b.id).join(",") + ")");
