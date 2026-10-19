@@ -48,7 +48,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.app_businesses TO service_role;
 
 REVOKE ALL PRIVILEGES ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
 REVOKE MAINTAIN ON TABLE public.app_business_cards FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON TABLE public.app_business_cards TO anon, authenticated;
+GRANT SELECT ON TABLE public.app_business_cards TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.app_business_cards TO service_role;
 
 -- Profile self-service may change only full_name. Role and approval status are
@@ -130,6 +130,7 @@ BEGIN
      OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','INSERT')
      OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','DELETE')
      OR pg_catalog.has_table_privilege('authenticated','public.app_businesses','TRUNCATE')
+     OR pg_catalog.has_table_privilege('anon','public.app_business_cards','SELECT')
      OR pg_catalog.has_table_privilege('anon','public.app_business_cards','INSERT')
      OR pg_catalog.has_table_privilege('anon','public.app_business_cards','UPDATE')
      OR pg_catalog.has_table_privilege('anon','public.app_business_cards','DELETE')
