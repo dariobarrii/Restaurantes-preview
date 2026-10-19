@@ -71,7 +71,7 @@ Changes are prepared on `security/nq-central-staging-integration`; none of the n
 - `index.html` uses neutral labels for NULL category/label values and routes admin reads/writes through the authenticated `manage-business-administration` function. Profile self-service remains limited to `full_name`; review capture remains a member-side insert.
 - New management function verifies the bearer session with Auth and checks approved admin role from `app_profiles` server-side. It rejects status changes to the caller's own profile, does not accept role changes, checks membership targets, and validates card channels/destinations.
 - `supabase/config.toml` requires JWT verification for that function.
-- Migration 021 coordinates revocation of browser DML/TRUNCATE/MAINTAIN on businesses/cards with service-role replacements; it keeps scoped reads, self profile-name updates, and owner/manager-only review snapshots. It must not be applied before the function is configured/deployed in staging and acceptance-tested.
+- Migration 021 coordinates revocation of browser DML/TRUNCATE/MAINTAIN on businesses/cards with service-role replacements; browser roles do not receive SELECT on cards or target_url. Approved business catalogue reads, self profile-name updates, member event reads, and owner/manager review snapshots remain scoped by RLS. It must not be applied before the function is configured/deployed in staging and acceptance-tested.
 - Added catalog-only preflight and manual rollback guidance.
 
 ### Verified from staging metadata
@@ -90,7 +90,7 @@ Changes are prepared on `security/nq-central-staging-integration`; none of the n
 6. Run SQL migrations only after manual SQL review and a passing preflight. No production action is authorized by this checklist.
 
 ### Test evidence in this environment
-- Existing Worker tests: 9/9 passed from a temporary copy of the current branch snapshot.
-- Static source assertions: 11/11 passed from a temporary copy of the current branch snapshot.
+- Existing Worker tests: 9/9 passed from a temporary copy of the branch snapshot.
+- Static source assertions: 12/12 passed from a temporary copy of the updated branch snapshot.
 - The Node CLI is unavailable in this runtime, so the standard `node --test` command could not be invoked. The tests were evaluated in an isolated Node REPL harness without installing dependencies.
 - No Edge Function, database RLS, auth, two-tenant, gateway deployment, or end-to-end acceptance tests have been run.
