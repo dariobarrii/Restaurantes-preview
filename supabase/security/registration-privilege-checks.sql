@@ -1,11 +1,11 @@
 -- READ ONLY: run manually only against the dedicated staging project.
 -- Reports direct ACLs, effective role privileges, RLS/policy and trigger metadata; no function bodies or table rows.
 WITH target_functions AS (
-  SELECT p.oid,p.proname,p.prosecdef,p.proacl,
+  SELECT p.oid,p.proname,p.prosecdef,p.proacl,n.nspname AS schema_name,
          p.oid::regprocedure::text AS identity
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
-  WHERE n.nspname='public'
+  WHERE n.nspname IN ('public','private')
     AND (p.proname IN (
       'register_business_card_event_with_token',
       'consume_business_card_rate_limit',
@@ -13,7 +13,8 @@ WITH target_functions AS (
       'app_is_admin'
     ) OR p.prosecdef)
 )
-SELECT f.identity,
+SELECT f.schema_name,
+       f.identity,
        pg_catalog.pg_get_userbyid(p.proowner) AS function_owner,
        f.prosecdef AS security_definer,
        EXISTS (
@@ -36,7 +37,22 @@ SELECT f.identity,
        pg_catalog.has_function_privilege('service_role',f.oid,'EXECUTE') AS service_role_can_execute
 FROM target_functions f
 JOIN pg_catalog.pg_proc p ON p.oid=f.oid
-ORDER BY f.identity;
+ORDER BY f.schema_name,f.identity;
+
+-- Effective schema access needed for private.app_is_admin() in RLS policies.
+SELECT n.nspname AS schema_name,
+       pg_catalog.has_schema_privilege('authenticated',n.oid,'USAGE') AS authenticated_usage,
+       pg_catalog.has_schema_privilege('anon',n.oid,'USAGE') AS anon_usage,
+       ARRAY(
+         SELECT CASE WHEN acl.grantee=0 THEN 'PUBLIC'
+                     ELSE pg_catalog.pg_get_userbyid(acl.grantee) END || ':' || acl.privilege_type
+         FROM pg_catalog.aclexplode(
+           COALESCE(n.nspacl,pg_catalog.acldefault('n',n.nspowner))
+         ) acl
+         ORDER BY acl.grantee,acl.privilege_type
+       ) AS direct_acl_entries
+FROM pg_catalog.pg_namespace n
+WHERE n.nspname='private';
 
 SELECT c.relname AS table_name,
        c.relrowsecurity AS rls_enabled,
