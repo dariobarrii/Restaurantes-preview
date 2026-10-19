@@ -185,6 +185,13 @@ test("each dashboard mutation validates identifiers, allowed fields, and authori
 });
 
 
+test("profile reads use bounded pagination and archived cards cannot be reactivated", () => {
+  assert.ok(adminFunction.includes(`select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false}).range(from, to)`));
+  assert.ok(adminFunction.includes(`select("id,archived_at").eq("id", input.id).maybeSingle()`));
+  assert.ok(adminFunction.includes(`error: "card_archived"`));
+  assert.ok(adminFunction.includes(`error: "admin_read_failed"`));
+});
+
 test("admin read actions page every dataset and fail instead of silently truncating", () => {
   assert.ok(adminFunction.includes("const ADMIN_PAGE_SIZE = 1000"));
   assert.ok(adminFunction.includes("const MAX_ADMIN_RESULT_ROWS = 50000"));
@@ -194,6 +201,13 @@ test("admin read actions page every dataset and fail instead of silently truncat
   assert.ok(adminFunction.includes(".range(from, to)"));
   assert.ok(!adminFunction.includes(".limit(10000)"));
   assert.ok(!adminFunction.includes(".limit(5000)"));
+});
+
+test("admin bearer parsing accepts normal Authorization headers and HTTPS targets", () => {
+  assert.ok(adminFunction.includes(String.raw`authorization.match(/^Bearer\s+(.+)$/i)`));
+  assert.ok(!adminFunction.includes(String.raw`/^Bearer\\s+(.+)$/i`));
+  assert.ok(adminFunction.includes(String.raw`! /\s/.test(value)`) || adminFunction.includes(String.raw`!/\s/.test(value)`));
+  assert.ok(!adminFunction.includes(String.raw`/[\\s]/.test(value)`));
 });
 
 test("admin action allowlists reject unexpected request fields", () => {
