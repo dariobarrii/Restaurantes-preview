@@ -59,3 +59,38 @@ The live staging schema currently reports these columns:
 - Effective grants AND RLS policies are checked together.
 - Tests demonstrate both that legitimate dashboard flows work and that unauthorized cross-tenant access/writes fail.
 - No production access, deploy, merge, or paid-resource creation.
+
+
+## 2026-10-19 implementation preparation status
+
+Changes are prepared on `security/nq-central-staging-integration`; none of the new SQL has been executed and no staging data or permissions were changed.
+
+### Prepared
+- Migration 020 adds nullable `app_businesses.category` and `app_business_cards.label`; existing rows remain NULL. It does not infer category/label values.
+- `created_at` was reviewed: business/card timestamps are not required for the current dashboard after removing card ordering by that field. Profile and event timestamps remain in use and already exist; no historical timestamp is added or backfilled.
+- `index.html` uses neutral labels for NULL category/label values and routes admin reads/writes through the authenticated `manage-business-administration` function. Profile self-service remains limited to `full_name`; review capture remains a member-side insert.
+- New management function verifies the bearer session with Auth and checks approved admin role from `app_profiles` server-side. It rejects status changes to the caller's own profile, does not accept role changes, checks membership targets, and validates card channels/destinations.
+- `supabase/config.toml` requires JWT verification for that function.
+- Migration 021 coordinates revocation of browser DML/TRUNCATE/MAINTAIN on businesses/cards with service-role replacements; it keeps scoped reads, self profile-name updates, and owner/manager-only review snapshots. It must not be applied before the function is configured/deployed in staging and acceptance-tested.
+- Added catalog-only preflight and manual rollback guidance.
+
+### Verified from staging metadata
+- The connected project is NQ Central Security Test. Applied migration history includes the staging fixtures and 019, but not repository migrations 002–018. Treat staging as a partial/manual baseline rather than replaying the repository history.
+- Existing app_businesses lacks category/created_at; app_business_cards lacks label/created_at.
+- authenticated retains DML and TRUNCATE on app_businesses/cards while current policies are read-focused. This remains live until the reviewed permission migration is applied.
+- The expected legacy mirror trigger is absent in staging. Historical reconciliation has eligible legacy rows not yet imported; do not import until the attribution and preflight output are reviewed.
+- Product registration Edge Function is not deployed in staging, and its RPC contract remains incompatible with the live RPC until the reviewed registration migration and function are deployed in order.
+
+### Pending before acceptance
+1. Review migrations 020/021 and run the read-only dashboard preflight manually against staging; do not apply when required baseline checks fail.
+2. Configure `NQ_ADMIN_ALLOWED_ORIGINS` for only the exact staging portal origin, deploy the new admin function to staging, and test every legitimate admin operation.
+3. Confirm that the auth/profile status values and table constraints in staging match the code; the function uses only observed UI statuses for profile changes.
+4. Reconcile and deploy the product NFC/QR path only after the live RPC/function contract is aligned. Do not use E2E functions.
+5. Validate two-business isolation, profile self-service, review role restrictions, token rotation/revocation, rate limits, mirror trigger, and historical reconciliation in staging.
+6. Run SQL migrations only after manual SQL review and a passing preflight. No production action is authorized by this checklist.
+
+### Test evidence in this environment
+- Existing Worker tests: 9/9 passed from a temporary copy of the current branch snapshot.
+- Static source assertions: 11/11 passed from a temporary copy of the current branch snapshot.
+- The Node CLI is unavailable in this runtime, so the standard `node --test` command could not be invoked. The tests were evaluated in an isolated Node REPL harness without installing dependencies.
+- No Edge Function, database RLS, auth, two-tenant, gateway deployment, or end-to-end acceptance tests have been run.
