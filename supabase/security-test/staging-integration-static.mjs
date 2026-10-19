@@ -132,7 +132,8 @@ test("nullable schema fields and panel fallbacks preserve unknown legacy values"
   assert.ok(schemaMigration.includes("ADD COLUMN IF NOT EXISTS category text"));
   assert.ok(schemaMigration.includes("ADD COLUMN IF NOT EXISTS label text"));
   assert.ok(!schemaMigration.includes("UPDATE public."));
-  assert.ok(!schemaMigration.includes("DEFAULT"));
+  assert.ok(schemaMigration.includes("ALTER COLUMN id SET DEFAULT nextval"));
+  assert.ok(schemaMigration.includes("'app_business_events','app_business_review_snapshots'"));
   assert.ok(!schemaMigration.includes("created_at"));
   assert.ok(index.includes("categoryNames[x.category]||x.category||'Sin categoría'"));
   assert.ok(index.includes("x.label||'Tarjeta sin nombre'"));
