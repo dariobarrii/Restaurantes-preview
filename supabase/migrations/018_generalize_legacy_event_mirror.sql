@@ -48,3 +48,11 @@ $function$;
 -- This trigger function is internal; client roles must not call it as an RPC.
 REVOKE EXECUTE ON FUNCTION public.mirror_legacy_nfc_event_to_business()
   FROM PUBLIC, anon, authenticated;
+DO $verify_acl$
+BEGIN
+  IF pg_catalog.has_function_privilege('anon','public.mirror_legacy_nfc_event_to_business()','EXECUTE')
+     OR pg_catalog.has_function_privilege('authenticated','public.mirror_legacy_nfc_event_to_business()','EXECUTE') THEN
+    RAISE EXCEPTION 'Legacy mirror trigger function remains executable by client roles';
+  END IF;
+END
+$verify_acl$;
