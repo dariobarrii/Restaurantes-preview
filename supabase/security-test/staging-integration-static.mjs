@@ -273,6 +273,9 @@ test("staging acceptance fixture is project-locked, scoped, and secret-free", ()
   assert.ok(stagingFixture.includes('"business_id=in.(" + Object.values(BUSINESS)'));
   assert.ok(stagingFixture.includes('owner cannot capture reviews for another business'));
   assert.ok(stagingFixture.includes('viewer role cannot capture reviews for its own business'));
+  assert.ok(stagingFixture.includes('eventExpectation(row.id)'));
+  assert.ok(stagingFixture.includes('&event_type=eq.'));
+  assert.ok(stagingFixture.includes('"id=eq." + business.id + "&slug=eq."'));
   assert.ok(stagingFixture.includes('body: [{ business_id: BUSINESS.a.id, platform: "Google apertura", review_count: probeCount }]'));
   assert.ok(!stagingFixture.includes('REVIEW_PROBE_IDS'));
   assert.ok(!stagingFixture.includes('captured_at: new Date().toISOString(), source: "manual"'));
