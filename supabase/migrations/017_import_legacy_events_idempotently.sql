@@ -7,7 +7,8 @@ DO $preflight$
 BEGIN
   IF pg_catalog.to_regclass('public.nfc_events') IS NULL
      OR pg_catalog.to_regclass('public.app_business_events') IS NULL
-     OR pg_catalog.to_regclass('public.app_businesses') IS NULL THEN
+     OR pg_catalog.to_regclass('public.app_businesses') IS NULL
+     OR pg_catalog.to_regclass('public.app_business_cards') IS NULL THEN
     RAISE EXCEPTION 'Required event/business tables are missing';
   END IF;
   IF NOT EXISTS (
