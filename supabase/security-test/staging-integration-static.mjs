@@ -33,16 +33,17 @@ test("registration and rate-limit RPC privileges are restricted in the migration
   assert.match(eventMigration,/GRANT EXECUTE ON FUNCTION %s TO service_role/);
   assert.match(eventMigration,/has_function_privilege/);
   assert.match(eventMigration,/aclexplode/);
-  assert.match(eventMigration,/DO \\$acl_sweep\\$/);
-  assert.match(eventMigration,/acl\\.grantee NOT IN \\(p\\.proowner,service_role_oid\\)/);
+  assert.match(eventMigration,/DO \$acl_sweep\$/);
+  assert.match(eventMigration,/acl\.grantee NOT IN \(p\.proowner,service_role_oid\)/);
   assert.match(eventMigration,/REVOKE INSERT ON TABLE public\.app_business_events FROM PUBLIC, anon, authenticated/i);
   assert.match(eventMigration,/REVOKE INSERT ON TABLE public\.nfc_events FROM PUBLIC, anon, authenticated/i);
   assert.match(eventMigration,/REVOKE ALL PRIVILEGES ON TABLE public\.app_business_card_tokens FROM PUBLIC, anon, authenticated/i);
   assert.match(mirrorMigration,/REVOKE EXECUTE ON FUNCTION public\.mirror_legacy_nfc_event_to_business\(\)/);
+  assert.match(mirrorMigration,/DO \\$acl_sweep\\$/);
   assert.match(privilegeSql,/has_function_privilege/);
   assert.match(privilegeSql,/has_table_privilege/);
   assert.match(privilegeSql,/pg_get_triggerdef/);
-  assert.doesNotMatch(privilegeSql,/\\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\\b/i);
+  assert.doesNotMatch(privilegeSql,/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\b/i);
 });
 
 test("gateway applies per-client rate limits before forwarding and fails closed", () => {
@@ -50,7 +51,6 @@ test("gateway applies per-client rate limits before forwarding and fails closed"
   assert.match(rpc,/consume_business_card_rate_limit/);
   assert.match(worker,/RATE_LIMITER\.limit\(/);
   assert.match(worker,/CF-Connecting-IP/);
-  assert.match(worker,/STAGING_PROJECT_REF/);
   assert.match(worker,/STAGING_PROJECT_REF/);
   assert.match(worker,/url\.hostname !== expectedProjectRef/);
   assert.doesNotMatch(worker,/x-forwarded-for/i);
