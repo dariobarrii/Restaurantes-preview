@@ -29,7 +29,7 @@ Cloudflare documents Worker rate-limit state as local to a Cloudflare location a
 
 ## SQL and function privileges
 
-Migration 016 explicitly revokes EXECUTE on `register_business_card_event_with_token(uuid,text,text)` from PUBLIC, anon and authenticated and grants it to `service_role`. It dynamically applies the same policy to `consume_business_card_rate_limit`, checks effective anon/authenticated/service_role access, and removes other direct grants while retaining the function owner. The RPC is therefore intended to be called through the server Edge Function; the Edge Function checks the gateway secret and uses its server-side service role.
+Migration 016 explicitly revokes EXECUTE on `register_business_card_event_with_token(uuid,text,text)` from PUBLIC, anon and authenticated and grants it to `service_role`. It dynamically applies the same policy to `consume_business_card_rate_limit`, checks effective anon/authenticated/service_role access, and removes other direct grants while retaining the function owner. The Edge Function calls the limiter with a fixed global bucket and 600/60 parameters. The limiter function's body and source migration were not located, so its counter semantics, persistence and concurrency behavior are not verified. The registration RPC is intended to be called through the server Edge Function, which checks the gateway secret and uses its server-side service role.
 
 Migration 016 also removes direct client INSERT on `app_business_events` and `nfc_events`, removes client grants on `app_business_card_tokens`, and grants the token table to `service_role`. This is consistent with the management Edge Function, which authenticates an approved administrator and writes tokens server-side. It must still be checked against the live staging ACL and management flows.
 
@@ -37,12 +37,12 @@ Migration 018 revokes client EXECUTE on the SECURITY DEFINER legacy mirror and r
 
 Migration 010's token-table policy references `public.app_is_admin()`. The exact definition and live ACL were not established here. Migration 016/018 do not revoke its EXECUTE permission. The catalog query reports its SECURITY DEFINER flag and effective role permissions without returning its body. Check staging that the policy can still evaluate for legitimate administration and that no unintended client access exists.
 
-RLS policies and table ACLs are separate controls. The updated `registration-privilege-checks.sql` reports effective table privileges for anon, authenticated and service_role, whether RLS is enabled/forced, policy expressions, all public SECURITY DEFINER function metadata/EXECUTE access, and the mirror trigger definition. It includes `app_profiles`, `app_business_members`, cards, businesses, tokens and event tables. The updated historical reconciliation query compares eligible counts side by side by business/channel and reports missing dates, ambiguous/unmatched attribution, pre-existing duplicates, and imported business/channel/date mismatches. It is SELECT-only and does not return function bodies, credentials or event rows. It has not been run. Policy text and catalog results alone do not prove two-tenant runtime isolation.
+RLS policies and table ACLs are separate controls. The updated `registration-privilege-checks.sql` reports effective table privileges for anon, authenticated and service_role, whether RLS is enabled/forced, policy expressions, all public SECURITY DEFINER function metadata/EXECUTE access, and the mirror trigger definition. It includes `app_profiles`, `app_business_members`, cards, businesses, tokens and event tables. The updated historical reconciliation query compares eligible counts side by side by business/channel and reports missing dates, ambiguous/unmatched attribution, pre-existing duplicates, and imported business/channel/date mismatches. Both diagnostic SQL files contain read-only SELECT queries; they do not return function bodies, credentials or event rows. Neither file has been run. It has not been run. Policy text and catalog results alone do not prove two-tenant runtime isolation.
 
 ## Historical migration
 
 Migration 017:
-- requires a non-null source `created_at`;
+- verifies the presence of all source/destination columns used by the migration, then requires non-null source `created_at`;
 - attributes from a card's business, or a unique normalized exact name match; ambiguous/unmatched rows remain in legacy storage;
 - uses unique partial `legacy_event_id` and `ON CONFLICT` for idempotence;
 - does not update existing business, event type/channel or event timestamp on conflict; it only fills missing device/card attribution;
@@ -54,8 +54,9 @@ No rows were queried and no migration was executed. Run `supabase/security/histo
 
 - Source review: completed for Worker, tests, migrations 010/016/017/018, and read-only SQL diagnostics.
 - The exact 004 file and trigger attachment: not verified; remote file access available here fetches known paths but did not provide a directory listing.
-- `node --test workers/nq-central-card-gateway/src/index.test.mjs`: not run. No local checkout/Git or Node/Deno CLI is available in this environment.
-- `node --test supabase/security-test/staging-integration-static.mjs`: not run for the same reason. Static test assertions were expanded but are not reported as passed.
+- Worker automated suite: **9 passed, 0 failed** in the isolated Node runtime against the exact current branch files copied to a temporary directory.
+- Static security suite: **7 passed, 0 failed** in the isolated Node runtime against current branch files copied to a temporary directory; only test fixture paths were redirected.
+- No local checkout/Git or Node/Deno CLI is available. The tests ran through the available Node REPL, not via command-line execution from a checkout.
 - PostgreSQL syntax, effective grants, app_is_admin behavior, RLS, trigger association/firing and historical reconciliation: require the dedicated staging database; none were checked.
 - Worker rate binding and Edge Function gateway-secret behavior in a deployed environment: require staging deployment and end-to-end verification; no deployment was performed.
 - Two-business isolation: requires two staging users and business fixtures; no runtime test was performed.
