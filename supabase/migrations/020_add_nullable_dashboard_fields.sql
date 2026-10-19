@@ -137,6 +137,21 @@ BEGIN
     END IF;
 
     IF NOT COALESCE(v_identity, false) THEN
+      -- If the sequence is still owned by this ID column but its DEFAULT was
+      -- removed, restore only that missing default. Never replace an existing
+      -- expression that points elsewhere; that remains a fail-closed error.
+      IF v_default IS NULL THEN
+        EXECUTE pg_catalog.format(
+          'ALTER TABLE public.%I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
+          v_table_name, v_sequence
+        );
+        SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+          INTO v_default
+        FROM pg_catalog.pg_attrdef d
+        JOIN pg_catalog.pg_attribute a ON a.attrelid=d.adrelid AND a.attnum=d.adnum
+        WHERE d.adrelid=v_table_oid AND a.attname='id';
+      END IF;
+
       SELECT EXISTS (
         SELECT 1
         FROM pg_catalog.pg_depend d
