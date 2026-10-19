@@ -23,8 +23,18 @@ BEGIN
   IF EXISTS (
     SELECT required.table_name, required.column_name
     FROM (VALUES
+      ('nfc_events', 'id'),
+      ('nfc_events', 'created_at'),
       ('nfc_events', 'device_type'),
       ('nfc_events', 'card_id'),
+      ('app_business_cards', 'id'),
+      ('app_business_cards', 'business_id'),
+      ('app_businesses', 'id'),
+      ('app_businesses', 'name'),
+      ('app_business_events', 'business_id'),
+      ('app_business_events', 'event_type'),
+      ('app_business_events', 'created_at'),
+      ('app_business_events', 'source'),
       ('app_business_events', 'legacy_event_id'),
       ('app_business_events', 'device_type'),
       ('app_business_events', 'card_id')
