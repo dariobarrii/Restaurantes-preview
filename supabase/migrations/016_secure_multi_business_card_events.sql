@@ -169,4 +169,53 @@ BEGIN
 END
 $permissions$;
 
+
+-- Remove any additional direct EXECUTE grants retained by earlier versions.
+-- The owner remains implicit; service_role is the only non-owner grantee.
+DO $acl_sweep$
+DECLARE
+  f record;
+  g record;
+  service_role_oid oid := 'service_role'::regrole::oid;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS signature
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public'
+      AND p.proname IN ('register_business_card_event_with_token','consume_business_card_rate_limit')
+  LOOP
+    FOR g IN
+      SELECT DISTINCT acl.grantee, pg_catalog.pg_get_userbyid(acl.grantee) AS role_name
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL pg_catalog.aclexplode(
+        COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+      ) acl
+      WHERE p.oid=f.signature::oid
+        AND acl.privilege_type='EXECUTE'
+        AND acl.grantee<>0
+        AND acl.grantee<>p.proowner
+        AND acl.grantee<>service_role_oid
+    LOOP
+      EXECUTE pg_catalog.format(
+        'REVOKE EXECUTE ON FUNCTION %s FROM %I', f.signature, g.role_name
+      );
+    END LOOP;
+
+    IF EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc p
+      CROSS JOIN LATERAL pg_catalog.aclexplode(
+        COALESCE(p.proacl,pg_catalog.acldefault('f',p.proowner))
+      ) acl
+      WHERE p.oid=f.signature::oid
+        AND acl.privilege_type='EXECUTE'
+        AND acl.grantee NOT IN (p.proowner,service_role_oid)
+    ) THEN
+      RAISE EXCEPTION 'Unexpected EXECUTE grantee remains on %', f.signature;
+    END IF;
+  END LOOP;
+END
+$acl_sweep$;
+
 COMMIT;
