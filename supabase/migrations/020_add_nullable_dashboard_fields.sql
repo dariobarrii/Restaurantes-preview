@@ -46,6 +46,11 @@ ALTER TABLE public.app_businesses
 ALTER TABLE public.app_business_cards
   ADD COLUMN IF NOT EXISTS label text;
 
+-- An existing column may have been introduced manually as NOT NULL; make the
+-- compatibility fields nullable without fabricating legacy values.
+ALTER TABLE public.app_businesses ALTER COLUMN category DROP NOT NULL;
+ALTER TABLE public.app_business_cards ALTER COLUMN label DROP NOT NULL;
+
 -- Runtime inserts omit these primary keys. Some staging schemas were created
 -- without the identity/serial defaults from the baseline migration. Restore an
 -- owned sequence default without changing any existing row or timestamp.
@@ -59,6 +64,14 @@ DECLARE
   v_last_value bigint;
   v_is_called boolean;
   v_next_value bigint;
+  v_table_oid oid;
+  v_table_owner oid;
+  v_sequence_owner oid;
+  v_identity boolean;
+  v_default_uses_sequence boolean;
+  v_sequence_min bigint;
+  v_sequence_max bigint;
+  v_sequence_cycles boolean;
 BEGIN
   FOREACH v_table_name IN ARRAY ARRAY[
     'app_business_events','app_business_review_snapshots'
@@ -73,6 +86,14 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'public.% id must be bigint before adding an ID default', v_table_name;
     END IF;
+
+    -- Prevent concurrent INSERTs from allocating IDs while max(id) is aligned.
+    EXECUTE pg_catalog.format('LOCK TABLE public.%I IN ACCESS EXCLUSIVE MODE', v_table_name);
+    SELECT c.oid, c.relowner INTO v_table_oid, v_table_owner
+    FROM pg_catalog.pg_class c WHERE c.oid=('public.' || v_table_name)::regclass;
+    SELECT is_identity='YES' INTO v_identity
+    FROM information_schema.columns
+    WHERE table_schema='public' AND table_name=v_table_name AND column_name='id';
 
     v_sequence := pg_catalog.pg_get_serial_sequence(
       'public.' || v_table_name, 'id'
@@ -105,23 +126,61 @@ BEGIN
       );
     END IF;
 
+    IF v_sequence IS NULL THEN
+      RAISE EXCEPTION 'Could not establish an owned ID sequence for public.%', v_table_name;
+    END IF;
+
+    SELECT c.relowner INTO v_sequence_owner
+    FROM pg_catalog.pg_class c WHERE c.oid=v_sequence::regclass;
+    IF v_sequence_owner IS DISTINCT FROM v_table_owner THEN
+      RAISE EXCEPTION 'public.% ID sequence owner does not match table owner', v_table_name;
+    END IF;
+
+    IF NOT COALESCE(v_identity, false) THEN
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_catalog.pg_depend d
+        JOIN pg_catalog.pg_attrdef ad ON ad.oid=d.objid
+        WHERE d.classid='pg_catalog.pg_attrdef'::regclass
+          AND d.refclassid='pg_catalog.pg_class'::regclass
+          AND d.refobjid=v_sequence::regclass
+          AND ad.adrelid=v_table_oid
+          AND ad.adnum=(SELECT a.attnum FROM pg_catalog.pg_attribute a
+                        WHERE a.attrelid=v_table_oid AND a.attname='id' AND NOT a.attisdropped)
+      ) INTO v_default_uses_sequence;
+      IF v_default IS NULL OR NOT COALESCE(v_default_uses_sequence,false) THEN
+        RAISE EXCEPTION 'public.%.id default does not use its owned sequence', v_table_name;
+      END IF;
+    END IF;
+
+    SELECT seqmin, seqmax, seqcycle INTO v_sequence_min, v_sequence_max, v_sequence_cycles
+    FROM pg_catalog.pg_sequence WHERE seqrelid=v_sequence::regclass;
+    IF v_sequence_cycles THEN
+      RAISE EXCEPTION 'public.% ID sequence must not CYCLE', v_table_name;
+    END IF;
+
     EXECUTE pg_catalog.format(
       'SELECT COALESCE(max(id),0) FROM public.%I', v_table_name
     ) INTO v_max_id;
     EXECUTE pg_catalog.format(
       'SELECT last_value, is_called FROM %s', v_sequence::regclass
     ) INTO v_last_value, v_is_called;
-    IF greatest(
-      v_max_id,
-      CASE WHEN v_is_called THEN v_last_value ELSE v_last_value - 1 END
-    ) = 9223372036854775807 THEN
+    IF v_max_id = 9223372036854775807
+       OR (v_is_called AND v_last_value = 9223372036854775807) THEN
       RAISE EXCEPTION 'public.%.id exhausted bigint sequence values', v_table_name;
     END IF;
     v_next_value := greatest(
-      v_max_id,
-      CASE WHEN v_is_called THEN v_last_value ELSE v_last_value - 1 END
-    ) + 1;
-    PERFORM pg_catalog.setval(v_sequence::regclass, v_next_value, false);
+      v_max_id + 1,
+      CASE WHEN v_is_called THEN v_last_value + 1 ELSE v_last_value END
+    );
+    IF v_next_value < v_sequence_min OR v_next_value > v_sequence_max THEN
+      RAISE EXCEPTION 'public.% ID sequence cannot provide next required value %', v_table_name, v_next_value;
+    END IF;
+    -- ALTER SEQUENCE RESTART is transactional (unlike setval), so a later
+    -- preflight failure cannot leave sequence state changed after rollback.
+    EXECUTE pg_catalog.format(
+      'ALTER SEQUENCE %s RESTART WITH %s', v_sequence::regclass, v_next_value
+    );
   END LOOP;
 END
 $business_event_id_defaults$;
