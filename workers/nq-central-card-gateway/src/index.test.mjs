@@ -4,11 +4,11 @@ import worker from "./index.mjs";
 
 const origin = "https://staging.example.invalid";
 const gatewaySecret = "test-only-secret";
-const upstream = "https://stage-project.supabase.co/functions/v1/register-business-card-event";
+const upstream = "https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/register-business-card-event";
 const makeEnv = (overrides = {}) => ({
   RATE_LIMITER: { limit: async () => ({ success: true }) },
   SUPABASE_FUNCTION_URL: upstream,
-  STAGING_PROJECT_REF: "stage-project",
+  STAGING_PROJECT_REF: "rxxbmqilnozcnpwguqga",
   NQ_GATEWAY_SHARED_SECRET: gatewaySecret,
   ALLOWED_ORIGINS: origin,
   ...overrides,
@@ -98,7 +98,7 @@ test("rejects unsafe or non-staging upstream configuration", async () => {
     SUPABASE_FUNCTION_URL: "https://production.example.invalid/functions/v1/register-business-card-event",
   }));
   const wrongPath = await worker.fetch(request(), makeEnv({
-    SUPABASE_FUNCTION_URL: "https://stage-project.supabase.co/functions/v1/other",
+    SUPABASE_FUNCTION_URL: "https://rxxbmqilnozcnpwguqga.supabase.co/functions/v1/other",
   }));
   assert.equal(wrongHost.status, 503);
   assert.equal(wrongPath.status, 503);
@@ -123,4 +123,18 @@ test("does not return a destination containing the gateway secret", async () => 
   const body = await response.text();
   assert.equal(response.status, 502);
   assert.equal(body.includes(gatewaySecret), false);
+});
+
+test("malformed client limiter results fail closed with a controlled response", async () => {
+  for (const result of [null, undefined, {}, {success:"true"}]) {
+    let called=false;globalThis.fetch=async()=>{called=true;return Response.json({ok:true,target_url:"https://example.invalid"})};
+    const response=await worker.fetch(request(),makeEnv({RATE_LIMITER:{limit:async()=>result}}));
+    assert.equal(response.status,503);assert.equal(called,false);
+  }
+});
+test("nonstandard upstream ports and unapproved project refs are rejected",async()=>{
+ for(const overrides of [{SUPABASE_FUNCTION_URL:upstream.replace('.co/','.co:444/')},{STAGING_PROJECT_REF:'other-project',SUPABASE_FUNCTION_URL:'https://other-project.supabase.co/functions/v1/register-business-card-event'}]){
+  let called=false;globalThis.fetch=async()=>{called=true;return Response.json({})};
+  const response=await worker.fetch(request(),makeEnv(overrides));assert.equal(response.status,503);assert.equal(called,false);
+ }
 });

@@ -26,7 +26,7 @@ function allowedOrigin(request, env) {
 function validUpstream(value, expectedProjectRef) {
   try {
     const url = new URL(value);
-    if (!expectedProjectRef || url.hostname !== expectedProjectRef + ".supabase.co" ||
+    if (expectedProjectRef !== "rxxbmqilnozcnpwguqga" || url.port || url.hostname !== expectedProjectRef + ".supabase.co" ||
         url.protocol !== "https:" || url.username || url.password ||
         url.pathname !== "/functions/v1/register-business-card-event" ||
         url.search || url.hash) return null;
@@ -129,6 +129,7 @@ export default {
     } catch {
       return json({ ok: false, error: "client_rate_limit_unavailable" }, 503, origin);
     }
+    if (!limitResult || typeof limitResult.success !== "boolean") return json({ ok: false, error: "client_rate_limit_unavailable" }, 503, origin);
     if (!limitResult.success) return json({ ok: false, error: "client_rate_limited" }, 429, origin);
 
     try {
