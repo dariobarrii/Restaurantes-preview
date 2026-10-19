@@ -98,6 +98,12 @@ Deno.serve(async (req: Request) => {
     const action = input.action;
     if (typeof action !== "string") return json({ error: "invalid_request" }, 400, origin);
 
+    if (action === "profiles") {
+      const { data, error } = await admin.from("app_profiles")
+        .select("user_id,status,role,created_at,full_name").order("created_at",{ascending:false});
+      if (error) return json({ error: "admin_read_failed" }, 503, origin);
+      return json({ profiles: data || [] }, 200, origin);
+    }
     if (action === "dashboard") {
       const [businesses, events, reviews, profiles] = await Promise.all([
         admin.from("app_businesses").select("*").order("name"),
