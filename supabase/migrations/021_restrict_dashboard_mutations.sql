@@ -27,6 +27,13 @@ BEGIN
   END LOOP;
 
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='app_businesses' AND column_name='category' AND data_type='text')
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='app_business_cards' AND column_name='label' AND data_type='text') THEN
+    RAISE EXCEPTION 'Migration 020 nullable dashboard columns must be applied first';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='app_profiles' AND column_name='full_name')
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns
     WHERE table_schema='public' AND table_name='app_profiles' AND column_name='status')
