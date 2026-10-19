@@ -19,7 +19,11 @@ WITH expected(table_name,column_name,expected_type) AS (
     ('app_business_review_snapshots','review_count','integer'),('app_business_review_snapshots','source','text')
 )
 SELECT e.table_name,e.column_name,e.expected_type,c.data_type AS actual_type,
-       (c.column_name IS NOT NULL AND c.data_type=e.expected_type) AS matches
+       (c.column_name IS NOT NULL AND c.data_type=e.expected_type) AS target_matches,
+       CASE WHEN e.column_name IN ('category','label')
+            THEN (c.column_name IS NULL OR c.data_type=e.expected_type)
+            ELSE (c.column_name IS NOT NULL AND c.data_type=e.expected_type)
+       END AS safe_for_020_preflight
 FROM expected e
 LEFT JOIN information_schema.columns c
   ON c.table_schema='public' AND c.table_name=e.table_name AND c.column_name=e.column_name
@@ -31,11 +35,17 @@ SELECT c.relname AS table_name,c.relrowsecurity AS rls_enabled,c.relforcerowsecu
        has_table_privilege('anon',c.oid,'UPDATE') AS anon_update,
        has_table_privilege('anon',c.oid,'DELETE') AS anon_delete,
        has_table_privilege('anon',c.oid,'TRUNCATE') AS anon_truncate,
+       has_table_privilege('anon',c.oid,'REFERENCES') AS anon_references,
+       has_table_privilege('anon',c.oid,'TRIGGER') AS anon_trigger,
+       has_table_privilege('anon',c.oid,'MAINTAIN') AS anon_maintain,
        has_table_privilege('authenticated',c.oid,'SELECT') AS auth_select,
        has_table_privilege('authenticated',c.oid,'INSERT') AS auth_insert,
        has_table_privilege('authenticated',c.oid,'UPDATE') AS auth_update,
        has_table_privilege('authenticated',c.oid,'DELETE') AS auth_delete,
        has_table_privilege('authenticated',c.oid,'TRUNCATE') AS auth_truncate,
+       has_table_privilege('authenticated',c.oid,'REFERENCES') AS auth_references,
+       has_table_privilege('authenticated',c.oid,'TRIGGER') AS auth_trigger,
+       has_table_privilege('authenticated',c.oid,'MAINTAIN') AS auth_maintain,
        has_table_privilege('service_role',c.oid,'SELECT') AS service_select,
        has_table_privilege('service_role',c.oid,'INSERT') AS service_insert,
        has_table_privilege('service_role',c.oid,'UPDATE') AS service_update
