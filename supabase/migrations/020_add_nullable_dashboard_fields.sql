@@ -72,6 +72,7 @@ DECLARE
   v_sequence_min bigint;
   v_sequence_max bigint;
   v_sequence_cycles boolean;
+  v_sequence_increment bigint;
 BEGIN
   FOREACH v_table_name IN ARRAY ARRAY[
     'app_business_events','app_business_review_snapshots'
@@ -168,8 +169,12 @@ BEGIN
       END IF;
     END IF;
 
-    SELECT seqmin, seqmax, seqcycle INTO v_sequence_min, v_sequence_max, v_sequence_cycles
+    SELECT seqmin, seqmax, seqcycle, seqincrement
+      INTO v_sequence_min, v_sequence_max, v_sequence_cycles, v_sequence_increment
     FROM pg_catalog.pg_sequence WHERE seqrelid=v_sequence::regclass;
+    IF v_sequence_increment IS DISTINCT FROM 1 THEN
+      RAISE EXCEPTION 'public.% ID sequence must increment by 1', v_table_name;
+    END IF;
     IF v_sequence_cycles THEN
       RAISE EXCEPTION 'public.% ID sequence must not CYCLE', v_table_name;
     END IF;
