@@ -32,10 +32,16 @@ SELECT c.relname AS table_name,
        c.relrowsecurity AS rls_enabled,
        pg_catalog.has_table_privilege('anon',c.oid,'SELECT') AS anon_select,
        pg_catalog.has_table_privilege('anon',c.oid,'INSERT') AS anon_insert,
+       pg_catalog.has_table_privilege('anon',c.oid,'UPDATE') AS anon_update,
+       pg_catalog.has_table_privilege('anon',c.oid,'DELETE') AS anon_delete,
        pg_catalog.has_table_privilege('authenticated',c.oid,'SELECT') AS authenticated_select,
        pg_catalog.has_table_privilege('authenticated',c.oid,'INSERT') AS authenticated_insert,
        pg_catalog.has_table_privilege('authenticated',c.oid,'UPDATE') AS authenticated_update,
-       pg_catalog.has_table_privilege('service_role',c.oid,'INSERT') AS service_role_insert
+       pg_catalog.has_table_privilege('authenticated',c.oid,'DELETE') AS authenticated_delete,
+       pg_catalog.has_table_privilege('service_role',c.oid,'SELECT') AS service_role_select,
+       pg_catalog.has_table_privilege('service_role',c.oid,'INSERT') AS service_role_insert,
+       pg_catalog.has_table_privilege('service_role',c.oid,'UPDATE') AS service_role_update,
+       pg_catalog.has_table_privilege('service_role',c.oid,'DELETE') AS service_role_delete
 FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public'
