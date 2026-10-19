@@ -1,0 +1,11 @@
+(node:13108) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS browser pipeline NFC (SQL client substituted)
+PASS browser pipeline QR (SQL client substituted)
+PASS browser pipeline invalid credential (SQL client substituted)
+PASS browser pipeline SQL invalid_card response (SQL client substituted)
+PASS browser pipeline client limited (SQL client substituted)
+PASS browser pipeline global limited (SQL client substituted)
+PASS browser pipeline gateway upstream failure (SQL client substituted)
+PASS browser pipeline malformed link (SQL client substituted)
+Browser pipeline checks passed: 9; RPC SQL/RLS, deployed endpoints and real Google Maps not tested.

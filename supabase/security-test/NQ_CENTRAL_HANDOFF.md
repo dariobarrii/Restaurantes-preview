@@ -1,5 +1,17 @@
 # NQ Central — relevo técnico
 
+## Estado vigente: cierre tecnico local
+
+Leer primero LAUNCH_READINESS_2026-10-19.md y CODESPACE_CONTINUATION.md. Base remota de esta jornada caeee9a9efd897abddbb24e36482c0258ae82580; resolver HEAD antes de continuar. El contenedor nq-central-pg-validation YA existe en el Codespace del propietario y su precheck fue informado como aprobado. No crear otro entorno ni buscar Docker aqui. Codex no inspecciono ese log ni ejecuto 020/021.
+
+Resultado final ejecutado: 102/102 Node, 4/4 portal Chrome owner/admin movil/escritorio y9/9 comprobaciones scanner/Worker/Edge offline. SQL/SDK/Chart se sustituyen segun BROWSER_LOCAL_TESTS.md; no RLS ni NFC integral aprobado. CSV administrativo, URL heredada insegura, carrera de perfil, conteo Madrid y overflow movil corregidos. Reportes finales en results/*launch-node-final.txt y *browser*-final.txt.
+
+NUEVO requisito antes de migraciones locales: el export guarda source-catalog.json y el clon debe coincidir con origen en snapshot de catalogo/ACL/RLS antes de020/021. No fabricar el archivo ni omitir el gate. Snapshot incluye private/public app_is_admin y hash sin cuerpos; el SELECT actualizado paso EXPLAIN sin ANALYZE en staging confirmado. Ninguna migracion ni escritura de staging realizada. Preparacion del checklist de lanzamiento:4/12 puertas con evidencia local (33%); no esta listo el piloto.
+
+Las operaciones de staging/deploy/datos/importacion/merge siguen prohibidas. Siguiente paso minimo: continuar el procedimiento privado en el Codespace existente y obtener evidencia PostgreSQL real. Despues, autorizaciones expresas separadas para integracion. Las secciones siguientes son historial y pueden describir bloqueos ya sustituidos por esta informacion.
+
+## Historial de jornadas
+
 Actualizado: 2026-10-19. Rama exclusiva: `security/nq-central-staging-integration`, repositorio `dariobarrii/Restaurantes-preview`. HEAD remoto verificado al iniciar esta jornada: `d5bb53dc20796db4f8a3845a1a2a123ad982088e`. Este documento se versiona con cada bloque; para conocer el HEAD actual usar `git ls-remote origin refs/heads/security/nq-central-staging-integration`, no asumir que la referencia anterior sigue siendo la última.
 
 ## Estado y límites

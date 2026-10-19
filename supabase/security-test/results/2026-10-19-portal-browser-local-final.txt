@@ -1,0 +1,5 @@
+PASS browser owner viewport 390: dashboard and isolation of client queries (API substituted)
+PASS browser owner viewport 1280: dashboard and isolation of client queries (API substituted)
+PASS browser admin viewport 390: dashboard and isolation of client queries (API substituted)
+PASS browser admin viewport 1280: dashboard and isolation of client queries (API substituted)
+Browser cases passed: 4; actual staging/RLS and chart library rendering not tested.
