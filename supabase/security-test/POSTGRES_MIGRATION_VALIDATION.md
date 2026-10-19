@@ -86,7 +86,7 @@ Run from PowerShell. Set the staging connection URL only in the current process 
    - sequence owner matching table owner, non-cycling configuration, range and next value beyond existing IDs;
    - authenticated having only profile full_name UPDATE and review snapshot INSERT on business_id, platform, review_count;
    - no effective browser table-level INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN, including inherited role grants;
-   - only the intended review sequence USAGE grants;
+   - no anon/authenticated privileges on either dashboard ID sequence, and only the intended review sequence USAGE for authenticated/service_role;
    - portal card reads coming from manage-business-administration while direct authenticated app_business_cards SELECT stays unavailable.
 
 7. Record the exact PostgreSQL server version, both migration pass results, any warnings, and the generated local catalog outputs. Do not label this SQL validation passed based on source inspection or a nonmatching local server.
