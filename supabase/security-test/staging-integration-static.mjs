@@ -180,3 +180,17 @@ test("dashboard preflight is catalog-only and contains a staged rollback plan", 
   assert.ok(rollbackPlan.includes("do not restore blanket authenticated grants"));
   assert.ok(dashboardMigration.includes("m.member_role IN ('owner','manager')"));
 });
+
+test("product NFC/QR contract validates card state and keeps destinations behind token flow", () => {
+  assert.ok(eventMigration.includes("v_card.channel='qr'"));
+  assert.ok(eventMigration.includes("v_card.status='active' AND archived_at IS NULL"));
+  assert.ok(eventMigration.includes("v_token.active"));
+  assert.ok(eventMigration.includes("'target_url',v_card.target_url"));
+  assert.ok(eventMigration.includes("'rate_limited'"));
+  assert.ok(rpc.includes("result.target_url"));
+  assert.ok(rpc.includes("consume_business_card_rate_limit"));
+  assert.ok(!dashboardMigration.includes("GRANT SELECT ON TABLE public.app_business_cards TO anon"));
+  assert.ok(dashboardMigration.includes("has_table_privilege('anon','public.app_business_cards','SELECT')"));
+  assert.ok(adminFunction.includes("getReader()"));
+  assert.ok(adminFunction.includes("total > 8192"));
+});
