@@ -15,6 +15,7 @@ const FIXTURE = "nq_central_acceptance_v1";
 const SOURCE = "nq_central_acceptance_fixture_v1";
 const EVENT_IDS = [991000001,991000002,991000003,991000004,992000001,992000002,992000003,992000004];
 const REVIEW_IDS = [993000001,993000002];
+const REVIEW_PROBE_IDS = [993000003,993000004];
 const BUSINESS = {
   a: { id: "a1000000-0000-4000-8000-000000000001", slug: "nq-test-fixture-a", name: "NQ Staging Fixture A" },
   b: { id: "b1000000-0000-4000-8000-000000000002", slug: "nq-test-fixture-b", name: "NQ Staging Fixture B" },
@@ -187,14 +188,18 @@ async function prepareEvents() {
   for (const row of (oldEvents.data || [])) {
     if (row.source !== SOURCE || !Object.values(BUSINESS).some((b) => b.id === row.business_id)) throw new Error("Fixture event ID collides with a non-fixture row.");
   }
-  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.concat(REVIEW_PROBE_IDS).join(",") + ")");
   for (const row of (oldReviews.data || [])) {
-    if (!Object.values(BUSINESS).some((b) => b.id === row.business_id) || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
+    const id = Number(row.id);
+    const isSeed = REVIEW_IDS.includes(id);
+    const expectedBusiness = id === REVIEW_IDS[0] || id === REVIEW_PROBE_IDS[0] ? BUSINESS.a.id : BUSINESS.b.id;
+    const expectedCount = isSeed ? 7 : id === REVIEW_PROBE_IDS[0] ? 8 : 9;
+    if ((!isSeed && !REVIEW_PROBE_IDS.includes(id)) || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== expectedCount || row.source !== "manual") {
       throw new Error("Fixture review ID collides with a non-fixture row.");
     }
   }
   await remove("app_business_events", "id=in.(" + eventIds + ")");
-  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")");
+  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.concat(REVIEW_PROBE_IDS).join(",") + ")");
   const now = Date.now();
   const rows = [];
   let eventIndex = 0;
@@ -252,6 +257,22 @@ async function checkReviewIsolation(bearer, expectedBusiness, otherBusiness, lab
   note(label + " reads own review snapshot", rows.some((row) => row.business_id === expectedBusiness), "own business only expected");
   note(label + " cannot read foreign review snapshot", !rows.some((row) => row.business_id === otherBusiness), "foreign business not visible");
 }
+async function checkReviewWriteRights(ownerBearer, viewerBearer) {
+  const own = await request(table("app_business_review_snapshots"), {
+    method: "POST", key: anonKey, bearer: ownerBearer,
+    body: [{ id: REVIEW_PROBE_IDS[0], business_id: BUSINESS.a.id, platform: "Google apertura", review_count: 8, captured_at: new Date().toISOString(), source: "manual" }],
+    allowError: true, prefer: "return=minimal",
+  });
+  if (own.response.ok) await remove("app_business_review_snapshots", "id=eq." + REVIEW_PROBE_IDS[0]);
+  note("owner can capture reviews for own business", own.response.ok, "HTTP " + own.response.status);
+  const foreign = await request(table("app_business_review_snapshots"), {
+    method: "POST", key: anonKey, bearer: viewerBearer,
+    body: [{ id: REVIEW_PROBE_IDS[1], business_id: BUSINESS.a.id, platform: "Google apertura", review_count: 9, captured_at: new Date().toISOString(), source: "manual" }],
+    allowError: true, prefer: "return=minimal",
+  });
+  if (foreign.response.ok) await remove("app_business_review_snapshots", "id=eq." + REVIEW_PROBE_IDS[1]);
+  note("viewer cannot capture reviews for another business", !foreign.response.ok, "HTTP " + foreign.response.status);
+}
 async function checkSelfElevation(bearer, userId) {
   const attempt = await request(table("app_profiles", "user_id=eq." + userId), {
     method: "PATCH", key: anonKey, bearer, body: { role: "admin" }, allowError: true, prefer: "return=minimal",
@@ -308,16 +329,18 @@ async function cleanup() {
   for (const row of (oldEvents.data || [])) {
     if (row.source !== SOURCE || !Object.values(BUSINESS).some((item) => item.id === row.business_id)) throw new Error("Cleanup stopped: event ID is outside the fixture scope.");
   }
-  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + REVIEW_IDS.join(",") + ")");
+  const reviewIds = REVIEW_IDS.concat(REVIEW_PROBE_IDS);
+  const oldReviews = await get("app_business_review_snapshots", "select=id,business_id,platform,review_count,source&id=in.(" + reviewIds.join(",") + ")");
   for (const row of (oldReviews.data || [])) {
-    const index = REVIEW_IDS.indexOf(Number(row.id));
-    const expectedBusiness = Object.values(BUSINESS)[index]?.id;
-    if (index < 0 || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== 7 || row.source !== "manual") {
+    const id = Number(row.id);
+    const expectedBusiness = id === REVIEW_IDS[0] || id === REVIEW_PROBE_IDS[0] ? BUSINESS.a.id : BUSINESS.b.id;
+    const expectedCount = REVIEW_IDS.includes(id) ? 7 : id === REVIEW_PROBE_IDS[0] ? 8 : 9;
+    if (!reviewIds.includes(id) || row.business_id !== expectedBusiness || row.platform !== "Google apertura" || row.review_count !== expectedCount || row.source !== "manual") {
       throw new Error("Cleanup stopped: review ID is outside the fixture scope.");
     }
   }
   await remove("app_business_events", "id=in.(" + EVENT_IDS.join(",") + ")&source=eq." + encodeURIComponent(SOURCE));
-  await remove("app_business_review_snapshots", "id=in.(" + REVIEW_IDS.join(",") + ")&source=eq.manual");
+  await remove("app_business_review_snapshots", "id=in.(" + reviewIds.join(",") + ")&source=eq.manual");
   await remove("app_business_card_tokens", "card_id=in.(" + cardIds + ")");
   await remove("app_business_cards", "id=in.(" + cardIds + ")");
   const authUsers = await listAuthUsers();
@@ -351,6 +374,7 @@ async function main() {
     await inspectTenant("viewer/business B", viewerToken, BUSINESS.b.id, BUSINESS.a.id);
     await checkReviewIsolation(ownerToken, BUSINESS.a.id, BUSINESS.b.id, "owner");
     await checkReviewIsolation(viewerToken, BUSINESS.b.id, BUSINESS.a.id, "viewer");
+    await checkReviewWriteRights(ownerToken, viewerToken);
     await checkSelfElevation(ownerToken, credentials.get("owner").id);
     await checkSelfApproval(viewerToken, credentials.get("viewer").id);
     await checkDirectWriteRejected(ownerToken);
