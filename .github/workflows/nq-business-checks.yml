@@ -1,0 +1,33 @@
+name: NQ Business pre-release checks
+
+on:
+  push:
+    branches:
+      - feature/nq-business-naming
+    paths:
+      - 'index.html'
+      - 'scripts/check-release.cjs'
+      - '.github/workflows/nq-business-checks.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'scripts/check-release.cjs'
+      - '.github/workflows/nq-business-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate NQ Business
+        run: node scripts/check-release.cjs
